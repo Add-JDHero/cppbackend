@@ -11,7 +11,6 @@ using namespace std::literals;
 int main(int argc, const char** argv) {
     static const int port = 3333;
     static const size_t max_buffer_size = 1024;
-    typedef std::chrono::duration<float> fsec;
 
     if (argc != 2) {
         std::cout << "Usage: "sv << argv[0] << " <server IP>"sv << std::endl;
