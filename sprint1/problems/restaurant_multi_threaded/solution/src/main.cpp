@@ -8,6 +8,7 @@
 #include <mutex>
 #include <sstream>
 #include <syncstream>
+#include <thread>
 #include <unordered_map>
 #include <atomic>
 
@@ -36,7 +37,21 @@ public:
 private:
     std::atomic_int& counter_;
     int expected_counter_ = ++counter_;
-}; 
+};
+
+// Запускает функцию fn на n потоках, включая текущий
+template <typename Fn>
+void RunWorkers(unsigned n, const Fn& fn) {
+    n = std::max(1u, n);
+    std::vector<std::jthread> workers;
+    workers.reserve(n - 1);
+    // Запускаем n-1 рабочих потоков, выполняющих функцию fn
+    while (--n) {
+        workers.emplace_back(fn);
+    }
+    fn();
+} 
+
 class Hamburger {
 public:
     [[nodiscard]] bool IsCutletRoasted() const {
@@ -226,8 +241,8 @@ private:
     bool with_onion_;
     OrderHandler handler_;
     Logger logger_{std::to_string(id_)};
-    Timer roast_timer_{io_, 1ms};
-    Timer marinade_timer_{io_, 1ms};
+    Timer roast_timer_{io_, 1s};
+    Timer marinade_timer_{io_, 1s};
     Hamburger hamburger_;
     bool onion_marinaded_ = false;
     bool delivered_ = false; // Заказ доставлен?
@@ -279,29 +294,14 @@ int main() {
         orders.emplace(id, OrderResult{ec, ec ? Hamburger{} : *h});
     };
 
-    const int id1 = restaurant.MakeHamburger(false, handle_result);
-    const int id2 = restaurant.MakeHamburger(true, handle_result);
-
     // До вызова io.run() никакие заказы не выполняются
     assert(orders.empty());
-    io.run();
 
-    // После вызова io.run() все заказы должны быть выполнены
-    assert(orders.size() == 2u);
-    {
-        // Проверяем заказ без лука
-        const auto& o = orders.at(id1);
-        assert(!o.ec);
-        assert(o.hamburger.IsCutletRoasted());
-        assert(o.hamburger.IsPacked());
-        assert(!o.hamburger.HasOnion());
+    for (int i = 0; i < 16; ++i) {
+        restaurant.MakeHamburger(i % 2 == 0, print_result);
     }
-    {
-        // Проверяем заказ с луком
-        const auto& o = orders.at(id2);
-        assert(!o.ec);
-        assert(o.hamburger.IsCutletRoasted());
-        assert(o.hamburger.IsPacked());
-        assert(o.hamburger.HasOnion());
-    }
+    
+    RunWorkers(4, [&io]() {
+        io.run();
+    });
 }
