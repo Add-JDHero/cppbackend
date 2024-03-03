@@ -90,12 +90,12 @@ public:
     // Начинает приготовление хлеба на газовой плите. Как только горелка будет занята, вызовет
     // handler
     void StartBake(GasCooker& cooker, Handler handler) {
-        // Метод StartFry можно вызвать только один раз
+        // Метод StartBake можно вызвать только один раз
         if (baking_start_time_) {
             throw std::logic_error("Baking already started");
         }
 
-        // Запрещаем повторный вызов StartFry
+        // Запрещаем повторный вызов StartBake
         baking_start_time_ = Clock::now();
 
         // Готовимся занять газовую плиту

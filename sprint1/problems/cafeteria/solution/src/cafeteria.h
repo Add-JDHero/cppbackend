@@ -12,6 +12,8 @@
 #include "hotdog.h"
 #include "result.h"
 
+using namespace std::chrono;
+
 namespace net = boost::asio;
 using Timer = net::steady_timer;
 using namespace std::literals::chrono_literals;
@@ -24,72 +26,83 @@ using Strand = net::strand<net::io_context::executor_type>;
 
 class Order : public std::enable_shared_from_this<Order> {
 public:
-    explicit Order(net::io_context& io, Store& store, Strand& strand) 
+    explicit Order(net::io_context& io, Store& store
+                , Strand& strand, HotDogHandler handler, std::shared_ptr<GasCooker> cooker, int order_id) 
         : io_(io)
         , store_(store)
-        , strand_(strand) {
+        , strand_(strand)
+        , baking_timer_(io)
+        , frying_timer_(io)
+        , order_id_(order_id)
+        , hotdog_handler_(std::move(handler)) 
+        , gas_cooker_(std::move(cooker)) {
     }
 
-    void MakeHotDog(GasCooker& cooker, HotDogHandler handler) {
+
+    void MakeHotDog() {
         auto bread = store_.GetBread();
         auto sausage = store_.GetSausage();
 
-        BakeBread(cooker, bread, [self = shared_from_this(), this, handler, bread, sausage]() {
+        BakeBread(bread, [self = shared_from_this(), this, bread, sausage]() {
             if (++ingredients_ready_ == 2) {
-                CompleteOrder(handler, bread, sausage);
+                CompleteOrder(bread, sausage);
             }
         });
 
-        FrySausage(cooker,sausage, [self = shared_from_this(),this, handler, bread, sausage]() {
+        FrySausage(sausage, [self = shared_from_this(),this, bread, sausage]() {
             if (++ingredients_ready_ == 2) {
-                CompleteOrder(handler, bread, sausage);
+                CompleteOrder(bread, sausage);
             }
         });
         
     }
 
-    void BakeBread(GasCooker& cooker, std::shared_ptr<Bread> bread, Handler handler) {
-        bread->StartBake(cooker, [self = shared_from_this(), this, &bread, &handler]() {
-            std::cout << "Timer begin\n";
-            baking_timer_.async_wait(net::bind_executor(strand_, [&bread, &self, &handler](sys::error_code ec) {
-                if (!ec) {
-                    bread->StopBake();
-                    handler();
-                }
-            }));
+    void BakeBread(std::shared_ptr<Bread> bread, Handler handler) {
+        net::post(strand_, [this, bread, handler = std::move(handler)]{
+            bread->StartBake(*gas_cooker_, [self = shared_from_this(), handler = std::move(handler), this, bread]() {
+                baking_timer_.expires_after(1000ms);
+                baking_timer_.async_wait(net::bind_executor(strand_, [bread, self, handler = std::move(handler)](sys::error_code ec) {
+                    if (!ec) {
+                        bread->StopBake();
+                        handler();
+                    } else {
+                        std::cout << ec.what();
+                    }
+                }));
+            });
         });
     }
 
-    void FrySausage(GasCooker& cooker, std::shared_ptr<Sausage> sausage, Handler handler) {
-        sausage->StartFry(cooker, [self = shared_from_this(), this, &sausage, &handler]() {
-            frying_timer_.async_wait(net::bind_executor(strand_, [&sausage, &self, &handler](sys::error_code ec) {
-                if (!ec) {
-                    sausage->StopFry();
-                    handler();
-                }
-            }));
+    void FrySausage(std::shared_ptr<Sausage> sausage, Handler handler) {
+        net::post(strand_, [this, sausage, handler = std::move(handler)]{
+            sausage->StartFry(*gas_cooker_, [self = shared_from_this(), handler = std::move(handler), this, sausage]() {
+                frying_timer_.expires_after(1500ms);
+                frying_timer_.async_wait(net::bind_executor(strand_, [handler = std::move(handler), sausage, self](sys::error_code ec) {
+                    if (!ec) {
+                        sausage->StopFry();
+                        handler();
+                    }
+                }));
+            });
         });
     }
 
-private:
-    int GenerateId() {
-        std::lock_guard<std::mutex> lock(id_mutex_); // Захватываем мьютекс для безопасного доступа к next_id_
-        return ++next_id_;
+private: 
+    void CompleteOrder(std::shared_ptr<Bread> bread, std::shared_ptr<Sausage> sausage) {
+        auto hotDog = std::make_shared<HotDog>(order_id_, sausage, bread);
+        hotdog_handler_(Result<HotDog>{*hotDog});
     }
 
-    void CompleteOrder(HotDogHandler handler, std::shared_ptr<Bread> bread, std::shared_ptr<Sausage> sausage) {
-        auto hotDog = std::make_shared<HotDog>(GenerateId(), sausage, bread);
-        handler(Result<HotDog>{*hotDog});
-    }
-
+    HotDogHandler hotdog_handler_;
     int ingredients_ready_ = 0;
     net::io_context& io_;
     Store& store_;
     Strand& strand_;
+    int order_id_;
+    std::shared_ptr<GasCooker> gas_cooker_;
     std::mutex id_mutex_;
-    int next_id_ = 0;
-    Timer baking_timer_{io_, 1s};
-    Timer frying_timer_{io_, 1s + 500ms};
+    Timer baking_timer_;
+    Timer frying_timer_;
 };
 
 // Класс "Кафетерий". Готовит хот-доги
@@ -102,17 +115,23 @@ public:
     // Асинхронно готовит хот-дог и вызывает handler, как только хот-дог будет готов.
     // Этот метод может быть вызван из произвольного потока
     void OrderHotDog(HotDogHandler handler) {
-        std::make_shared<Order>(io_, store_, strand_)->MakeHotDog(*gas_cooker_, std::move(handler));
+        net::dispatch(strand_, [handler = std::move(handler), this]{
+            std::make_shared<Order>(io_, store_, strand_, std::move(handler), gas_cooker_, GenerateId())->MakeHotDog();
+        });
     }
 
 private:
+    int GenerateId() {
+        std::lock_guard<std::mutex> lock(id_mutex_);
+
+        return ++next_id_;
+    }
+
     net::io_context& io_;
     // Используется для создания ингредиентов хот-дога
     Store store_;
     Strand strand_{net::make_strand(io_)};
-    // Газовая плита. По условию задачи в кафетерии есть только одна газовая плита на 8 горелок
-    // Используйте её для приготовления ингредиентов хот-дога.
-    // Плита создаётся с помощью make_shared, так как GasCooker унаследован от
-    // enable_shared_from_this.
+    int next_id_ = 0;
+    std::mutex id_mutex_;
     std::shared_ptr<GasCooker> gas_cooker_ = std::make_shared<GasCooker>(io_);
 };
