@@ -35,7 +35,7 @@ public:
         , frying_timer_(io)
         , order_id_(order_id)
         , hotdog_handler_(std::move(handler)) 
-        , gas_cooker_(std::move(cooker)) {
+        , gas_cooker_(cooker) {
     }
 
 
@@ -58,23 +58,23 @@ public:
     }
 
     void BakeBread(std::shared_ptr<Bread> bread, Handler handler) {
-        net::post(strand_, [this, bread, handler = std::move(handler)]{
+        net::post(io_, [this, bread, handler = std::move(handler)]{
             bread->StartBake(*gas_cooker_, [self = shared_from_this(), handler = std::move(handler), this, bread]() {
                 baking_timer_.expires_after(1000ms);
-                baking_timer_.async_wait(net::bind_executor(strand_, [bread, self, handler = std::move(handler)](sys::error_code ec) {
+                baking_timer_.async_wait([bread, self, handler = std::move(handler)](sys::error_code ec) {
                     if (!ec) {
                         bread->StopBake();
                         handler();
                     } else {
                         std::cout << ec.what();
                     }
-                }));
+                });
             });
         });
     }
 
     void FrySausage(std::shared_ptr<Sausage> sausage, Handler handler) {
-        net::post(strand_, [this, sausage, handler = std::move(handler)]{
+        net::post(io_, [this, sausage, handler = std::move(handler)]{
             sausage->StartFry(*gas_cooker_, [self = shared_from_this(), handler = std::move(handler), this, sausage]() {
                 frying_timer_.expires_after(1500ms);
                 frying_timer_.async_wait(net::bind_executor(strand_, [handler = std::move(handler), sausage, self](sys::error_code ec) {
@@ -101,8 +101,8 @@ private:
     int order_id_;
     std::shared_ptr<GasCooker> gas_cooker_;
     std::mutex id_mutex_;
-    Timer baking_timer_;
-    Timer frying_timer_;
+    Timer baking_timer_{io_, 1000ms};
+    Timer frying_timer_{io_, 1500ms};
 };
 
 // Класс "Кафетерий". Готовит хот-доги
@@ -115,8 +115,9 @@ public:
     // Асинхронно готовит хот-дог и вызывает handler, как только хот-дог будет готов.
     // Этот метод может быть вызван из произвольного потока
     void OrderHotDog(HotDogHandler handler) {
-        net::dispatch(strand_, [handler = std::move(handler), this]{
-            std::make_shared<Order>(io_, store_, strand_, std::move(handler), gas_cooker_, GenerateId())->MakeHotDog();
+        int order_id = GenerateId();
+        net::dispatch(io_, [handler = std::move(handler), this, order_id]{
+            std::make_shared<Order>(io_, store_, strand_, std::move(handler), gas_cooker_, order_id)->MakeHotDog();
         });
     }
 
