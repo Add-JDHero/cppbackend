@@ -143,7 +143,6 @@ public:
     }
 
 private:
-
     void RoastCutlet() {
         logger_.LogMessage("Start roasting cutlet"sv);
         roast_timer_.async_wait(
