@@ -4,6 +4,8 @@
 #include <iostream>
 #include <mutex>
 #include <thread>
+#include <thread>
+#include <string_view>
 #include <vector>
 
 #include "http_server.h"
@@ -16,7 +18,7 @@ namespace http = boost::beast::http;
 
 // Запрос, тело которого представлено в виде строки
 using StringRequest = http::request<http::string_body>;
-// Ответ, тело которого представлено в виде строки
+// Ответ, тело которого представлено в виде строки-fdiagnostics-color=always
 using StringResponse = http::response<http::string_body>;
 
 struct ContentType {
@@ -25,7 +27,7 @@ struct ContentType {
     // При необходимости внутрь ContentType можно добавить и другие типы контента
 };
 
-// Создаёт StringResponse с заданными параметрами
+/* // Создаёт StringResponse с заданными параметрами
 StringResponse MakeStringResponse(http::status status, std::string_view body, unsigned http_version,
                                   bool keep_alive,
                                   std::string_view content_type = ContentType::TEXT_HTML) {
@@ -35,7 +37,50 @@ StringResponse MakeStringResponse(http::status status, std::string_view body, un
     response.content_length(body.size());
     response.keep_alive(keep_alive);
     return response;
+} */
+
+// Создает ответ на неверный запрос
+StringResponse MakeBadResponse(StringResponse& response) {    
+    response.set(http::field::allow, "GET, HEAD"sv);
+    return response;
 }
+
+// Заполняет ответ на запрос
+StringResponse MakeResponse(StringResponse& response, std::string_view body,
+                                  bool keep_alive,
+                                  std::string_view content_type = ContentType::TEXT_HTML) {
+    response.set(http::field::content_type, content_type);
+    response.body() = body;
+    response.content_length(body.size());
+    response.keep_alive(keep_alive);
+    return response;
+}
+
+// Создаёт StringResponse с заданными параметрами
+StringResponse MakeStringResponse(http::status status, std::string_view body, unsigned http_version,
+                                  bool keep_alive,
+                                  std::string_view content_type = ContentType::TEXT_HTML) {
+    StringResponse response(status, http_version);
+    MakeResponse(response, body, keep_alive, content_type);
+    if (status == http::status::method_not_allowed) {
+        MakeBadResponse(response);
+    }
+    return response;
+}
+
+std::string GenerateResponseBody(StringRequest& req) {
+    const std::string_view target = req.target();
+    std::string response;
+    if (req.method() == http::verb::head) {
+        response;
+    }
+
+    response.append("<strong>"s);
+    response.append("Hello, "s + std::string(target.substr(target.find_last_of('/') + 1, std::string_view::npos)));
+    response.append("</strong>"s);
+    return response;
+}
+
 
 StringResponse HandleRequest(StringRequest&& req) {
     const auto text_response = [&req](http::status status, std::string_view text) {
@@ -46,7 +91,7 @@ StringResponse HandleRequest(StringRequest&& req) {
         return text_response(http::status::method_not_allowed, "Invalid method"sv);
     }
     
-    return MakeStringResponse(http::status::ok, "OK"sv, req.version(), req.keep_alive());
+    return MakeStringResponse(http::status::ok, GenerateResponseBody(req), req.version(), req.keep_alive());
 }
 
 // Запускает функцию fn на n потоках, включая текущий
@@ -80,7 +125,7 @@ int main() {
     const auto address = net::ip::make_address("0.0.0.0");
     constexpr net::ip::port_type port = 8080;
     http_server::ServeHttp(ioc, {address, port}, [](auto&& req, auto&& sender) {
-        // sender(HandleRequest(std::forward<decltype(req)>(req)));
+        sender(HandleRequest(std::forward<decltype(req)>(req)));
     });
 
     // Эта надпись сообщает тестам о том, что сервер запущен и готов обрабатывать запросы
