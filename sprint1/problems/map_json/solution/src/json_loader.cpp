@@ -8,6 +8,8 @@ namespace json_loader {
         // Загрузить модель игры из файла
         model::Game game;
 
+
+
         return game;
     }
 
