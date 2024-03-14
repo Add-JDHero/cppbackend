@@ -62,66 +62,6 @@ namespace http_server {
 
 //  Session func members
 
-    template <typename RequestHandler>
-    void Session<RequestHandler>::HandleRequest(HttpRequest&& request) {
-        // Захватываем умный указатель на текущий объект Session в лямбде,
-        // чтобы продлить время жизни сессии до вызова лямбды.
-        // Используется generic-лямбда функция, способная принять response произвольного типа
-        request_handler_(std::move(request), [self = this->shared_from_this()](auto&& response) {
-            self->Write(std::move(response));
-        });
-    }
-
-    template <typename RequestHandler>
-    std::shared_ptr<SessionBase> Session<RequestHandler>::GetSharedThis() {
-        return this->shared_from_this();
-    }  
-
-
 //  Listener func members
-
-    template <typename RequestHandler>
-    void Listener<RequestHandler>::Run() {
-        DoAccept();
-    }
-
-    template <typename RequestHandler>
-    void Listener<RequestHandler>::DoAccept() {
-        acceptor_.async_accept(
-            // Передаём последовательный исполнитель, в котором будут вызываться обработчики
-            // асинхронных операций сокета
-            net::make_strand(ioc_),
-            // С помощью bind_front_handler создаём обработчик, привязанный к методу OnAccept
-            // текущего объекта.
-            // Так как Listener — шаблонный класс, нужно подсказать компилятору, что
-            // shared_from_this — метод класса, а не свободная функция.
-            // Для этого вызываем его, используя this
-            // Этот вызов bind_front_handler аналогичен
-            // namespace ph = std::placeholders;
-            // std::bind(&Listener::OnAccept, this->shared_from_this(), ph::_1, ph::_2)
-            beast::bind_front_handler(&Listener::OnAccept, this->shared_from_this()));
-    }
-
-
-    template <typename RequestHandler>
-    // Метод socket::async_accept создаст сокет и передаст его передан в OnAccept
-    void Listener<RequestHandler>::OnAccept(sys::error_code ec, tcp::socket socket) {
-        using namespace std::literals;
-
-        if (ec) {
-            return /* ReportError(ec, "accept"sv) */;
-        }
-
-        // Асинхронно обрабатываем сессию
-        AsyncRunSession(std::move(socket));
-
-        // Принимаем новое соединение
-        DoAccept();
-    }
-
-    template <typename RequestHandler>
-    void Listener<RequestHandler>::AsyncRunSession(tcp::socket&& socket) {
-        std::make_shared<Session<RequestHandler>>(std::move(socket), request_handler_)->Run();
-    }
 
 }  // namespace http_server
