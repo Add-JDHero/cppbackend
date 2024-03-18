@@ -3,6 +3,7 @@
 #include "json_loader.h"
 #include "model.h"
 #include <string_view>
+#include <unordered_map>
 #include <boost/json.hpp>
 
 namespace http_handler {
@@ -25,16 +26,18 @@ namespace http_handler {
 
     class JsonResponseBuilder {
     public:
-        static boost::json::object BadRequest(const std::string& error_message);
+        static boost::json::object BadRequest(std::string_view error_message);
 
-        static boost::json::object NotFound(const std::string& error_message);
-
-        /* static boost::json::object GetMapsJson() {
-            return ;
-        } */
-
-        // Можно добавить другие методы для создания специфичных JSON-ответов
+        static boost::json::object NotFound(std::string_view error_message);
     };
+
+    // TODO: 
+    /* class UrlResolver {
+    public:
+
+    private:
+        std::unordered_map<std::string, Handler> url_resolver_;
+    }; */
 
     class HttpResponse {
     public:
@@ -52,7 +55,8 @@ namespace http_handler {
     std::string GenerateResponseBody(StringRequest& req, const model::Game& game);
 
     StringResponse HandleRequest(StringRequest&& req, const model::Game& game);
-// ========================================================
+
+
     class RequestHandler {
     public:
         explicit RequestHandler(model::Game& game);

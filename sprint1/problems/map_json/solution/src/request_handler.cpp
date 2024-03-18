@@ -13,16 +13,16 @@ namespace http_handler {
     using StringResponse = http::response<http::string_body>;
 
     // JsonResponseBuilder realizations
-    boost::json::object JsonResponseBuilder::BadRequest(const std::string& error_message) {
+    boost::json::object JsonResponseBuilder::BadRequest(std::string_view error_message) {
         boost::json::object obj;
-        obj["error"] = error_message;
+        obj["error"] = std::string(error_message);
         obj["code"] = "badRequest";
         return obj;
     }
 
-    boost::json::object JsonResponseBuilder::NotFound(const std::string& error_message) {
+    boost::json::object JsonResponseBuilder::NotFound(std::string_view error_message) {
         boost::json::object obj;
-        obj["error"] = error_message;
+        obj["error"] = std::string(error_message);
         obj["code"] = "mapNotFound";
         return obj;
     }
@@ -62,12 +62,10 @@ namespace http_handler {
         
         const model::Map* map = nullptr;
 
-        if (req.target() == "/api/v1/maps") {
+        if (req.target().find("/api/v1/") != std::string_view::npos) {
             response = json_loader::MapSerializer::SerializeMapsMainInfo(game.GetMaps());
-        } else if (map = game.FindMap( model::Map::Id(ParseMapStringRequest(req.target() )))) {
-            response = boost::json::serialize(json_loader::MapSerializer::SerializeSingleMap(*map));
         } else {
-            response = boost::json::serialize(JsonResponseBuilder::NotFound("Map not found"));
+            
         }
 
         return response;
@@ -84,7 +82,6 @@ namespace http_handler {
 
         return json_response(http::status::ok, GenerateResponseBody(req, game));
     }
-// ========================================================
 
     RequestHandler::RequestHandler(model::Game& game)
         : game_{game} {
