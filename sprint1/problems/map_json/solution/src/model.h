@@ -2,12 +2,13 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <numeric>
 
 #include "tagged.h"
 
 namespace model {
 
-using Dimension = int;
+using Dimension = int64_t;
 using Coord = Dimension;
 
 struct Point {

@@ -1,4 +1,5 @@
 #include "request_handler.h"
+#include "url_parser.h"
 
 namespace http_handler {
 
@@ -6,7 +7,7 @@ namespace http_handler {
     namespace beast = boost::beast;
     namespace http = beast::http;
     
-    // ========================================================
+
     // Запрос, тело которого представлено в виде строки
     using StringRequest = http::request<http::string_body>;
     // Ответ, тело которого представлено в виде строки-fdiagnostics-color=always
@@ -60,7 +61,7 @@ namespace http_handler {
         const std::string_view target = req.target();
         std::string response;
         
-        const model::Map* map = nullptr;
+        const std::shared_ptr<model::Map> map = nullptr;
 
         if (req.target().find("/api/v1/") != std::string_view::npos) {
             response = json_loader::MapSerializer::SerializeMapsMainInfo(game.GetMaps());
@@ -71,13 +72,38 @@ namespace http_handler {
         return response;
     }
 
+    /* bool (const std::vector<std::string>& path_components, StringRequest&& ) {
+    
+
+        return false;
+    } */
+
     StringResponse HandleRequest(StringRequest&& req, const model::Game& game) {
         const auto json_response = [&req](http::status status, std::string_view body = {}) {
-            return HttpResponse::MakeStringResponse(status, body, req.version(), req.keep_alive(), ContentType::APP_JSON);
+            return HttpResponse::MakeStringResponse(status, 
+                body, 
+                req.version(), 
+                req.keep_alive(), 
+                ContentType::APP_JSON);
         };
 
         if (req.method() != http::verb::get && req.method() != http::verb::head) {
             return json_response(http::status::method_not_allowed);
+        }
+
+        url::UrlParser parser(std::string(req.target()));
+        auto path_components = parser.getComponents();
+
+        if (path_components.size() >= 3 && path_components[0] == "api"sv && path_components[1] == "v1"sv && path_components[2] == "maps"sv) {
+            if (path_components.size() == 3) {
+                handleGetMapsRequest(res);
+            } else if (path_components.size() == 4) {
+                handleGetMapDetailsRequest(path_components[3], res);
+            } else {
+                handleBadRequest(res);
+            }
+        } else {
+            handleBadRequest(res);
         }
 
         return json_response(http::status::ok, GenerateResponseBody(req, game));

@@ -31,14 +31,6 @@ namespace http_handler {
         static boost::json::object NotFound(std::string_view error_message);
     };
 
-    // TODO: 
-    /* class UrlResolver {
-    public:
-
-    private:
-        std::unordered_map<std::string, Handler> url_resolver_;
-    }; */
-
     class HttpResponse {
     public:
         static StringResponse MakeResponse(StringResponse& response, std::string_view body,
