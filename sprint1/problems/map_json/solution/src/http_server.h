@@ -165,7 +165,7 @@ namespace http_server {
             beast::bind_front_handler(&Listener::OnAccept, this->shared_from_this()));
     }
 
-
+    
     template <typename RequestHandler>
     // Метод socket::async_accept создаст сокет и передаст его передан в OnAccept
     void Listener<RequestHandler>::OnAccept(sys::error_code ec, tcp::socket socket) {

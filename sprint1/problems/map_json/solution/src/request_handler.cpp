@@ -14,18 +14,18 @@ namespace http_handler {
     using StringResponse = http::response<http::string_body>;
 
     // JsonResponseBuilder realizations
-    boost::json::object JsonResponseBuilder::BadRequest(std::string_view error_message) {
+    std::string JsonResponseBuilder::BadRequest(std::string_view error_message) {
         boost::json::object obj;
         obj["error"] = std::string(error_message);
         obj["code"] = "badRequest";
-        return obj;
+        return boost::json::serialize(obj);
     }
 
-    boost::json::object JsonResponseBuilder::NotFound(std::string_view error_message) {
+    std::string JsonResponseBuilder::NotFound(std::string_view error_message) {
         boost::json::object obj;
         obj["error"] = std::string(error_message);
         obj["code"] = "mapNotFound";
-        return obj;
+        return boost::json::serialize(obj);
     }
 
     // HttpResponse realizations
@@ -56,29 +56,16 @@ namespace http_handler {
         return std::string(sv);
     }
 
-    // Other functions realisation
     std::string GenerateResponseBody(StringRequest& req, const model::Game& game) {
         const std::string_view target = req.target();
         std::string response;
         
-        const std::shared_ptr<model::Map> map = nullptr;
-
-        if (req.target().find("/api/v1/") != std::string_view::npos) {
-            response = json_loader::MapSerializer::SerializeMapsMainInfo(game.GetMaps());
-        } else {
-            
-        }
+        // const std::shared_ptr<model::Map> map = nullptr;
 
         return response;
     }
 
-    /* bool (const std::vector<std::string>& path_components, StringRequest&& ) {
-    
-
-        return false;
-    } */
-
-    StringResponse HandleRequest(StringRequest&& req, const model::Game& game) {
+    StringResponse RequestHandler::HandleRequest(StringRequest&& req) {
         const auto json_response = [&req](http::status status, std::string_view body = {}) {
             return HttpResponse::MakeStringResponse(status, 
                 body, 
@@ -96,17 +83,15 @@ namespace http_handler {
 
         if (path_components.size() >= 3 && path_components[0] == "api"sv && path_components[1] == "v1"sv && path_components[2] == "maps"sv) {
             if (path_components.size() == 3) {
-                handleGetMapsRequest(res);
+                return HandleGetMapsRequest(json_response);
             } else if (path_components.size() == 4) {
-                handleGetMapDetailsRequest(path_components[3], res);
+                return HandleGetMapDetailsRequest(json_response, path_components[3]);
             } else {
-                handleBadRequest(res);
+                return HandleBadRequest(json_response);
             }
-        } else {
-            handleBadRequest(res);
         }
 
-        return json_response(http::status::ok, GenerateResponseBody(req, game));
+        return HandleBadRequest(json_response);
     }
 
     RequestHandler::RequestHandler(model::Game& game)

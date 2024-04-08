@@ -99,13 +99,11 @@ namespace json_loader {
             for (const auto& map : maps) {
                 jsonMaps.push_back(SerializeSingleMapMainInfo(map));
             }
-            return boost::json::serialize(json::object{{"maps", std::move(jsonMaps)}});
+            return boost::json::serialize(std::move(jsonMaps));
         }
 
         json::object MapSerializer::SerializeSingleMap(const model::Map& map) {
-            json::object jsonMap;
-            jsonMap["id"] = *map.GetId();
-            jsonMap["name"] = map.GetName();
+            json::object jsonMap = SerializeSingleMapMainInfo(map);
             jsonMap["roads"] = SerializeRoads(map.GetRoads());
             jsonMap["buildings"] = SerializeBuildings(map.GetBuildings());
             jsonMap["offices"] = SerializeOffices(map.GetOffices());
