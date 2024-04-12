@@ -8,6 +8,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 #include <memory>
+#include <iostream>
 
 #include "hotdog.h"
 #include "result.h"
@@ -115,8 +116,7 @@ public:
     // Асинхронно готовит хот-дог и вызывает handler, как только хот-дог будет готов.
     // Этот метод может быть вызван из произвольного потока
     void OrderHotDog(HotDogHandler handler) {
-        int order_id = GenerateId();
-        net::dispatch(io_, [handler = std::move(handler), this, order_id]{
+        net::dispatch(strand_, [handler = std::move(handler), this, order_id = GenerateId()]{
             std::make_shared<Order>(io_, store_, strand_, std::move(handler), gas_cooker_, order_id)->MakeHotDog();
         });
     }

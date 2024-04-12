@@ -9,7 +9,9 @@
 #include <boost/beast/http.hpp>
 #include <iostream>
 #include <thread>
+#include <string_view>
 #include <optional>
+
 
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
@@ -63,12 +65,12 @@ std::string GenerateResponseBody(StringRequest& req) {
     const std::string_view target = req.target();
     std::string response;
     if (req.method() == http::verb::head) {
-        response ;
+        return response;
     }
 
-    response.append("<strong>"s);
+    // response.append("<strong>"s);
     response.append("Hello, "s + std::string(target.substr(target.find_last_of('/') + 1, std::string_view::npos)));
-    response.append("</strong>"s);
+    // response.append("</strong>"s);
     return response;
 }
 
@@ -139,12 +141,13 @@ int main() {
     constexpr unsigned short port = 8080;
     const auto endpoint = net::ip::tcp::endpoint(address, port);
 
-    tcp::acceptor acceptor(ioc, endpoint);
     tcp::socket socket(ioc);
+    tcp::acceptor acceptor(ioc, endpoint);
+
+    std::cout << "Server has started..."sv << std::endl;
 
     while (true) {
         acceptor.accept(socket);
-        std::cout << "Server has started..."sv << std::endl;
         std::thread t(
             // Лямбда-функция будет выполняться в отдельном потоке
             [](tcp::socket socket) {
