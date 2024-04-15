@@ -17,7 +17,7 @@ namespace json_loader {
 
     private:
         static model::Map ParseSingleMap(const json::object& obj);
-
+        
         static std::vector<model::Road> ParseRoads(const json::array& roadsArray);
         static std::vector<model::Building> ParseBuildings(const json::array& buildingsArray);
         static std::vector<model::Office> ParseOffices(const json::array& officesArray);

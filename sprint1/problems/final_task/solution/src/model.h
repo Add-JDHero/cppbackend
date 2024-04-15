@@ -193,8 +193,4 @@ private:
     MapIdToIndex map_id_to_index_;
 };
 
-<<<<<<< HEAD
 }  // namespace model
-=======
-}  // namespace model
->>>>>>> main
