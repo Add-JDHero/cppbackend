@@ -7,7 +7,7 @@
 namespace url {
     class UrlParser {
     public:
-        UrlParser(const std::string& url);
+        explicit UrlParser(const std::string& url);
 
         const std::vector<std::string>& getComponents() const;
 

@@ -13,11 +13,11 @@ namespace http_handler {
     // Ответ, тело которого представлено в виде строки-fdiagnostics-color=always
     using StringResponse = http::response<http::string_body>;
 
-    // JsonResponseBuilder realizations
     std::string JsonResponseBuilder::BadRequest(std::string_view error_message) {
         boost::json::object obj;
         obj["error"] = std::string(error_message);
         obj["code"] = "badRequest";
+
         return boost::json::serialize(obj);
     }
 
@@ -25,10 +25,10 @@ namespace http_handler {
         boost::json::object obj;
         obj["error"] = std::string(error_message);
         obj["code"] = "mapNotFound";
+
         return boost::json::serialize(obj);
     }
 
-    // HttpResponse realizations
     StringResponse HttpResponse::MakeResponse(StringResponse& response, std::string_view body,
                                     bool keep_alive,
                                     std::string_view content_type) {
@@ -36,6 +36,7 @@ namespace http_handler {
         response.body() = body;
         response.content_length(body.size());
         response.keep_alive(keep_alive);
+
         return response;
     }
 
@@ -47,6 +48,7 @@ namespace http_handler {
         std::string body = std::string(body_sv);
         StringResponse response(status, http_version);
         MakeResponse(response, body, keep_alive, content_type);
+
         return response;
     }
 
@@ -54,15 +56,6 @@ namespace http_handler {
         sv.remove_prefix(sv.find_last_of('/') + 1);
         
         return std::string(sv);
-    }
-
-    std::string GenerateResponseBody(StringRequest& req, const model::Game& game) {
-        const std::string_view target = req.target();
-        std::string response;
-        
-        // const std::shared_ptr<model::Map> map = nullptr;
-
-        return response;
     }
 
     StringResponse RequestHandler::HandleRequest(StringRequest&& req) {
