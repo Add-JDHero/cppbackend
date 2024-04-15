@@ -85,7 +85,7 @@ namespace json_loader {
                 roads.emplace_back(model::Road::VERTICAL, start, obj.at(json_keys::Y1).as_int64());
             }
         }
-
+        
         return roads;
     }
 
@@ -117,7 +117,7 @@ namespace json_loader {
     std::string MapSerializer::SerializeMaps(const std::vector<model::Map>& maps) {
         json::array jsonMaps;
         jsonMaps.reserve(maps.size());
-        
+
         std::transform(maps.cbegin(), maps.cend(), std::back_inserter(jsonMaps), 
             [](const model::Map& map) -> json::object { 
                 return SerializeSingleMap(map);

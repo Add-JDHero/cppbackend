@@ -75,9 +75,9 @@ std::string GenerateResponseBody(StringRequest& req) {
         response;
     }
 
-    response.append("<strong>"s);
+    // response.append("<strong>"s);
     response.append("Hello, "s + std::string(target.substr(target.find_last_of('/') + 1, std::string_view::npos)));
-    response.append("</strong>"s);
+    // response.append("</strong>"s);
     return response;
 }
 

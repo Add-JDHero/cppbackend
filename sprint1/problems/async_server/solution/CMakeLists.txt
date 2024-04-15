@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.11)
 
 project(HelloAsync CXX)
 set(CMAKE_CXX_STANDARD 20)
-# set(CMAKE_COLOR_DIAGNOSTICS ON)
-# # # SET(CMAKE_COLOR_MAKEFILE ON)
+set(CMAKE_COLOR_DIAGNOSTICS ON)
 
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup()
 
 find_package(Boost 1.78.0 REQUIRED)
 if(Boost_FOUND)

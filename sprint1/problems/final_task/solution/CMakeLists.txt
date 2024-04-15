@@ -31,4 +31,5 @@ add_executable(game_server
         src/url_parser.h
         src/url_parser.cpp
 )
+
 target_link_libraries(game_server PRIVATE Threads::Threads)
