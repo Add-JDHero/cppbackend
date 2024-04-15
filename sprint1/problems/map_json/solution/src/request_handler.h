@@ -68,7 +68,7 @@ namespace http_handler {
         model::Game& game_;
 
         template <typename Handler>
-        StringResponse HandleGetMapsRequest(Handler&& json_response) {
+        StringResponse HandleGetMapsRequest(Handler&& json_response) const {
             std::string maps = json_loader::MapSerializer::SerializeMapsMainInfo(game_.GetMaps());
             StringResponse response = json_response(http::status::ok, maps);
 
@@ -76,7 +76,7 @@ namespace http_handler {
         }
 
         template <typename Handler>
-        StringResponse HandleGetMapDetailsRequest(Handler&& json_response, std::string_view map_id) {
+        StringResponse HandleGetMapDetailsRequest(Handler&& json_response, std::string_view map_id) const {
             StringResponse response;
             const model::Map::Id id{std::string(map_id)};
             auto map_ptr = game_.FindMap(id);
@@ -90,10 +90,9 @@ namespace http_handler {
         }
 
         template <typename Handler>
-        StringResponse HandleBadRequest(Handler&& json_response) {
+        StringResponse HandleBadRequest(Handler&& json_response) const {
             return json_response(http::status::bad_request, JsonResponseBuilder::BadRequest());
         }
     };
 
 }  // namespace http_handler
-    

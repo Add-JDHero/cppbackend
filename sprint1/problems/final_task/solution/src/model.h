@@ -74,7 +74,7 @@ private:
 
 class Building {
 public:
-    explicit Building(Rectangle bounds) noexcept
+    explicit Building(const Rectangle& bounds) noexcept
         : bounds_{bounds} {
     }
 

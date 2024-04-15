@@ -34,9 +34,14 @@ namespace json_loader {
     std::vector<model::Map> MapParser::Parse(const json::value& jsonVal) {
         std::vector<model::Map> maps;
         auto mapsArray = jsonVal.at(json_keys::MAPS).as_array();
-        for (const auto& mapVal : mapsArray) {
-            maps.push_back(ParseSingleMap(mapVal.as_object()));
-        }
+        maps.reserve(mapsArray.size());
+
+        std::transform(mapsArray.cbegin(), mapsArray.cend(), std::back_inserter(maps),
+            [](const json::value& mapVal) -> model::Map {
+                return ParseSingleMap(mapVal.as_object());
+            }
+        );
+
         return maps;
     }
 
@@ -80,6 +85,7 @@ namespace json_loader {
                 roads.emplace_back(model::Road::VERTICAL, start, obj.at(json_keys::Y1).as_int64());
             }
         }
+
         return roads;
     }
 
@@ -91,6 +97,7 @@ namespace json_loader {
                                     {obj.at(json_keys::WIDTH).as_int64(), obj.at(json_keys::HEIGHT).as_int64()}};
             buildings.emplace_back(bounds);
         }
+
         return buildings;
     }
 
@@ -103,22 +110,33 @@ namespace json_loader {
             model::Offset offset{obj.at(json_keys::OFFSET_X).as_int64(), obj.at(json_keys::OFFSET_Y).as_int64()};
             offices.emplace_back(std::move(id), position, offset);
         }
+
         return offices;
     }
 
     std::string MapSerializer::SerializeMaps(const std::vector<model::Map>& maps) {
         json::array jsonMaps;
-        for (const auto& map : maps) {
-            jsonMaps.push_back(SerializeSingleMap(map));
-        }
+        jsonMaps.reserve(maps.size());
+        
+        std::transform(maps.cbegin(), maps.cend(), std::back_inserter(jsonMaps), 
+            [](const model::Map& map) -> json::object { 
+                return SerializeSingleMap(map);
+            }
+        );
+
         return boost::json::serialize(json::object{{json_keys::MAPS, std::move(jsonMaps)}});
     }
 
     std::string MapSerializer::SerializeMapsMainInfo(const std::vector<model::Map>& maps) {
         json::array jsonMaps;
-        for (const auto& map : maps) {
-            jsonMaps.push_back(SerializeSingleMapMainInfo(map));
-        }
+        jsonMaps.reserve(maps.size());
+        
+        std::transform(maps.cbegin(), maps.cend(), std::back_inserter(jsonMaps), 
+            [](const model::Map& map) -> json::object {
+                return SerializeSingleMapMainInfo(map);
+            }
+        );
+
         return boost::json::serialize(std::move(jsonMaps));
     }
 
@@ -127,6 +145,7 @@ namespace json_loader {
         jsonMap[json_keys::ROADS] = SerializeRoads(map.GetRoads());
         jsonMap[json_keys::BUILDINGS] = SerializeBuildings(map.GetBuildings());
         jsonMap[json_keys::OFFICES] = SerializeOffices(map.GetOffices());
+
         return jsonMap;
     }
 
@@ -134,6 +153,7 @@ namespace json_loader {
         json::object jsonMap;
         jsonMap[json_keys::ID] = *map.GetId();
         jsonMap[json_keys::NAME] = map.GetName();
+
         return jsonMap;
     }
 
@@ -152,6 +172,7 @@ namespace json_loader {
             }
             jsonRoads.push_back(roadObj);
         }
+
         return jsonRoads;
     }
 
@@ -165,6 +186,7 @@ namespace json_loader {
             buildingObj[json_keys::HEIGHT] = building.GetBounds().size.height;
             jsonBuildings.push_back(buildingObj);
         }
+
         return jsonBuildings;
     }
 
@@ -179,6 +201,7 @@ namespace json_loader {
             officeObj[json_keys::OFFSET_Y] = office.GetOffset().dy;
             jsonOffices.push_back(officeObj);
         }
+        
         return jsonOffices;
     }
 
