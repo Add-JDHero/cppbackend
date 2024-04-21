@@ -17,7 +17,6 @@ namespace http_server {
     namespace sys = boost::system;
     namespace http = beast::http;
 
-
     class SessionBase {
     public:
         // Запрещаем копирование и присваивание объектов SessionBase и его наследников
@@ -107,6 +106,7 @@ namespace http_server {
     template <typename Body, typename Fields>
     void SessionBase::Write(http::response<Body, Fields>&& response) {
         // Запись выполняется асинхронно, поэтому response перемещаем в область кучи
+        
         auto safe_response = std::make_shared<http::response<Body, Fields>>(std::move(response));
 
         auto self = GetSharedThis();
@@ -115,8 +115,6 @@ namespace http_server {
                             self->OnWrite(safe_response->need_eof(), ec, bytes_written);
                         });
     }
-
-
 
     template<typename RequestHandler>
     template <typename Handler>
@@ -131,7 +129,7 @@ namespace http_server {
         // чтобы продлить время жизни сессии до вызова лямбды.
         // Используется generic-лямбда функция, способная принять response произвольного типа
         request_handler_(std::move(request), [self = this->shared_from_this()](auto&& response) {
-            self->Write(std::move(response));
+                        self->Write(std::move(response));
         });
     }
 

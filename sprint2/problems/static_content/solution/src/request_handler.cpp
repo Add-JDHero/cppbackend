@@ -1,5 +1,6 @@
 #include "request_handler.h"
 #include "boost/beast/core/string_type.hpp"
+#include <variant>
 
 namespace http_handler {
     namespace sys = boost::system;
@@ -9,6 +10,26 @@ namespace http_handler {
     using StringRequest = http::request<http::string_body>;
     // Ответ, тело которого представлено в виде строки-fdiagnostics-color=always
     using StringResponse = http::response<http::string_body>;
+
+    fs::path ProcessingAbsPath(std::string_view base, std::string_view rel) {
+        fs::path base_path = fs::weakly_canonical(base);
+        fs::path rel_path{fs::weakly_canonical(std::string(rel))};
+        rel_path = rel_path.relative_path();
+        if (rel_path.empty() || (!rel_path.empty() && rel_path.string().back() == separating_chars::SLASH)) {
+            rel_path.append("index.html");
+        }
+
+        return fs::weakly_canonical(base_path / rel_path);
+    }
+    
+    // fs::path ProcessingAbsPath(std::string_view base, std::string_view rel) {
+    //     fs::path base_path = fs::canonical(base); // Используйте canonical вместо weakly_canonical
+    //     fs::path rel_path(rel);
+    //     if (!rel_path.is_absolute()) {
+    //         rel_path = base_path / rel_path;
+    //     }
+    //     return fs::canonical(rel_path); // Убедитесь, что путь существует и корректен
+    // }
 
     bool IsSubPath(fs::path path, fs::path base) {
         // Приводим оба пути к каноничному виду (без . и ..)
@@ -24,38 +45,6 @@ namespace http_handler {
         return true;
     }
 
-    beast::string_view MimeType(beast::string_view path) {
-        using beast::iequals;
-        auto const ext = [&path]{
-            auto const pos = path.rfind(".");
-            if(pos == beast::string_view::npos)
-                return beast::string_view{};
-            return path.substr(pos);
-        }();
-        if (iequals(ext, ".htm"))  return "text/html";
-        if (iequals(ext, ".html")) return "text/html";
-        // if(iequals(ext, ".php"))  return "text/html";
-        if (iequals(ext, ".css"))  return "text/css";
-        if (iequals(ext, ".txt"))  return "text/plain";
-        if (iequals(ext, ".js"))   return "text/javascript";
-        if (iequals(ext, ".json")) return "application/json";
-        if (iequals(ext, ".xml"))  return "application/xml";
-        // if (iequals(ext, ".swf"))  return "application/x-shockwave-flash";
-        // if (iequals(ext, ".flv"))  return "video/x-flv";
-        if (iequals(ext, ".png"))  return "image/png";
-        if (iequals(ext, ".jpe"))  return "image/jpeg";
-        if (iequals(ext, ".jpeg")) return "image/jpeg";
-        if (iequals(ext, ".jpg"))  return "image/jpeg";
-        if (iequals(ext, ".gif"))  return "image/gif";
-        if (iequals(ext, ".bmp"))  return "image/bmp";
-        if (iequals(ext, ".ico"))  return "image/vnd.microsoft.icon";
-        if (iequals(ext, ".tiff")) return "image/tiff";
-        if (iequals(ext, ".tif"))  return "image/tiff";
-        if (iequals(ext, ".svg"))  return "image/svg+xml";
-        if (iequals(ext, ".svgz")) return "image/svg+xml";
-        if (iequals(ext, ".mp3")) return "audio/mpeg";
-        return "application/octet-stream";
-    }
 
     std::string JsonResponseBuilder::BadRequest(std::string_view error_message) {
         boost::json::object obj;
@@ -117,34 +106,22 @@ namespace http_handler {
         return std::string(sv);
     }
 
-    std::string ExtractFileExtension(std::string_view path) {
-        if (path.find_last_of('.') != std::string_view::npos) {
-            beast::string_view ext = path.substr(path.find_last_of('.'), beast::string_view::npos);
-            return std::string(ext);
-        }
-        
-        return {};
-    }
-
-    StringResponse RequestHandler::HandleRequest(StringRequest&& req) {
+    ResponseVariant RequestHandler::HandleRequest(StringRequest&& req) {
         const auto json_response = [&req](http::status status, std::string_view body = {}) {
             return HttpResponse::MakeStringResponse(status, 
-                body, 
-                req.version(), 
-                req.keep_alive(), 
-                ContentType::APP_JSON);
+                   body, 
+                   req.version(), 
+                   req.keep_alive(), 
+                   ContentType::APP_JSON);
         };
 
         if (!IsAllowedReqMethod(req)) {
             return json_response(http::status::method_not_allowed);
         }
 
-        auto handler = DetermineHandler(req.target(), json_response);
-        auto result = handler();
-
-        result.insert(http::field::content_type, MimeType(ExtractFileExtension(req.target())));
-
-        return result;
+        std::string path = std::string(req.target());
+        auto response = ProcessRequest(path, json_response);
+        return response;
     }
 
     RequestHandler::RequestHandler(model::Game& game)
