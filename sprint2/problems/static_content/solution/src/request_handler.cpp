@@ -3,13 +3,15 @@
 #include <variant>
 
 namespace http_handler {
-    namespace sys = boost::system;
     
-
     // Запрос, тело которого представлено в виде строки
     using StringRequest = http::request<http::string_body>;
     // Ответ, тело которого представлено в виде строки-fdiagnostics-color=always
     using StringResponse = http::response<http::string_body>;
+
+    bool IsAllowedReqMethod(beast::http::verb method) {
+        return method == http::verb::get || method != http::verb::head;
+    }
 
     fs::path ProcessingAbsPath(std::string_view base, std::string_view rel) {
         fs::path base_path = fs::weakly_canonical(base);
@@ -62,41 +64,20 @@ namespace http_handler {
         return boost::json::serialize(obj);
     }
 
-    StringResponse HttpResponse::MakeResponse(StringResponse& response, std::string_view body,
+    void HttpResponse::MakeResponse(StringResponse& response, std::string body,
                                             bool keep_alive,
                                             std::string_view content_type) {
         response.set(http::field::content_type, content_type);
-        response.body() = body;
+        response.body() = std::move(std::string(body));
         response.content_length(body.size());
         response.keep_alive(keep_alive);
-
-        return response;
     }
 
-    http::response<http::file_body> ReadStaticFile(std::string_view file_name) {
-        http::response<http::file_body> res;
-        res.version(11);  // HTTP/1.1
-        res.result(http::status::ok);
-        res.insert(http::field::content_type, "text/plain"sv);
-
-        http::file_body::value_type file;
-
-        if (sys::error_code ec; file.open(file_name.data(), beast::file_mode::read, ec), ec) {
-            std::cout << "Failed to open file "sv << file_name << std::endl;
-        }
-
-        return {};
-    }
-
-    StringResponse HttpResponse::MakeStringResponse(http::status status,
-                                                    std::string_view body_sv,
-                                                    unsigned http_version,
-                                                    bool keep_alive,
-                                                    std::string_view content_type) {
-        std::string body = std::string(body_sv);
+    StringResponse HttpResponse::MakeStringResponse(http::status status, std::string body_sv,
+                                                unsigned http_version, bool keep_alive,
+                                                std::string_view content_type) {
         StringResponse response(status, http_version);
-        MakeResponse(response, body, keep_alive, content_type);
-
+        MakeResponse(response, body_sv, keep_alive, content_type);  // Уже не нужно копировать body_sv
         return response;
     }
 
@@ -107,15 +88,23 @@ namespace http_handler {
     }
 
     ResponseVariant RequestHandler::HandleRequest(StringRequest&& req) {
-        const auto json_response = [&req](http::status status, std::string_view body = {}) {
+        // const auto json_response = [&req](http::status status, std::string_view body = {}) {
+        //     return HttpResponse::MakeStringResponse(status, 
+        //            body, 
+        //            req.version(), 
+        //            req.keep_alive(), 
+        //            ContentType::APP_JSON);
+        // };
+
+        auto json_response = [version = req.version(), keep_alive = req.keep_alive()](http::status status, std::string body = {}) {
             return HttpResponse::MakeStringResponse(status, 
-                   body, 
-                   req.version(), 
-                   req.keep_alive(), 
-                   ContentType::APP_JSON);
+                body, 
+                version, 
+                keep_alive, 
+                ContentType::APP_JSON);
         };
 
-        if (!IsAllowedReqMethod(req)) {
+        if (!IsAllowedReqMethod(req.method())) {
             return json_response(http::status::method_not_allowed);
         }
 

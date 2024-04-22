@@ -34,6 +34,8 @@ namespace http_handler {
 
     bool IsSubPath(fs::path path, fs::path base);
 
+    bool IsAllowedReqMethod(beast::http::verb method);
+
     fs::path ProcessingAbsPath(std::string_view base, std::string_view rel);
     
     // Запрос, тело которого представлено в виде строки
@@ -60,14 +62,12 @@ namespace http_handler {
 
     class HttpResponse {
     public:
-        static StringResponse MakeResponse(StringResponse& response, std::string_view body,
-                                           bool keep_alive,
-                                           std::string_view content_type = ContentType::TEXT_HTML);
+        static void MakeResponse(StringResponse& response, std::string body,
+                                            bool keep_alive,
+                                            std::string_view content_type = ContentType::TEXT_HTML);
 
-        static StringResponse MakeStringResponse(http::status status,
-                                                std::string_view body_sv,
-                                                unsigned http_version,
-                                                bool keep_alive,
+        static StringResponse MakeStringResponse(http::status status, std::string body_sv,
+                                                unsigned http_version, bool keep_alive,
                                                 std::string_view content_type = ContentType::TEXT_HTML);
     };
 
@@ -133,7 +133,7 @@ namespace http_handler {
 
         template <typename Body, typename Allocator, typename Send>
         void operator()(http::request<Body, http::basic_fields<Allocator>>&& req, Send&& send) {
-            ResponseVariant response = HandleRequest(std::forward<decltype(req)>(req));
+            ResponseVariant response = HandleRequest(std::move(req));
             if (holds_alternative<StringResponse>(response)) {
                 auto& string_response = std::get<StringResponse>(response);
                 send(std::move(string_response));
@@ -150,14 +150,14 @@ namespace http_handler {
         const char* root_dir_;
 
         template <typename Handler>
-        StringResponse HandleApiRequest(const std::vector<std::string>& path_components, Handler&& json_response) {
+        StringResponse HandleApiRequest(const std::vector<std::string>& path_components, const Handler& json_response) {
             if (path_components.size() >= 3 && path_components[0] == "api" && 
                 path_components[1] == "v1" && path_components[2] == "maps") {
 
                 if (path_components.size() == 3) {
                     return HandleGetMapsRequest(json_response);
                 } else if (path_components.size() == 4) {
-                    return HandleGetMapDetailsRequest(json_response, path_components[3]);
+                    return HandleGetMapDetailsRequest(path_components[3], json_response);
                 }
             }
 
@@ -165,7 +165,7 @@ namespace http_handler {
         }
 
         template <typename Handler>
-        ResponseVariant HandleGetFileRequest(std::string req_path, Handler&& json_response) {
+        ResponseVariant HandleGetFileRequest(std::string req_path, const Handler& json_response) {
             fs::path base_path = fs::weakly_canonical(root_dir_);
             fs::path abs_path = ProcessingAbsPath(root_dir_, req_path);
 
@@ -174,9 +174,9 @@ namespace http_handler {
             if (IsSubPath(abs_path, base_path)) {
                 // auto result = util::ReadStaticFile(abs_path);
 
-                auto result = util::TestFunc(abs_path);
+                // auto result = util::TestFunc(abs_path);
                 // return json_response(http::status::ok, util::ReadFromFileIntoString(abs_path));
-                return json_response(http::status::ok, std::move(result));
+                return json_response(http::status::ok, util::TestFunc(abs_path));
                 // return result;
             }
 
@@ -199,32 +199,26 @@ namespace http_handler {
         template <typename Handler>
         StringResponse HandleGetMapsRequest(const Handler& json_response) const {
             std::string maps = json_loader::MapSerializer::SerializeMapsMainInfo(game_.GetMaps());
-            StringResponse response = json_response(http::status::ok, maps);
 
-            return response;
+            return json_response(http::status::ok, maps);
         }
 
         template <typename Handler>
-        StringResponse HandleGetMapDetailsRequest(const Handler& json_response, std::string_view map_id) const {
-            StringResponse response;
+        StringResponse HandleGetMapDetailsRequest(std::string_view map_id, const Handler& json_response) const {
             const model::Map::Id id{std::string(map_id)};
             auto map_ptr = game_.FindMap(id);
             
             if (map_ptr) {
                 std::string map = boost::json::serialize(json_loader::MapSerializer::SerializeSingleMap(*map_ptr));
-                return response = json_response(http::status::ok, map);
+                return json_response(http::status::ok, map);
             }
 
-            return response = json_response(http::status::not_found, JsonResponseBuilder::NotFound());
+            return json_response(http::status::not_found, JsonResponseBuilder::NotFound());
         }
 
         template <typename Handler>
-        static StringResponse HandleBadRequest(Handler&& json_response) {
+        static StringResponse HandleBadRequest(const Handler& json_response) {
             return json_response(http::status::bad_request, JsonResponseBuilder::BadRequest());
-        }
-
-        bool IsAllowedReqMethod(const StringRequest& req) {
-            return req.method() == http::verb::get || req.method() != http::verb::head;
         }
     };
 
