@@ -1,4 +1,4 @@
-#include "Util.h"
+#include "util.h"
 
 #include <filesystem>
 
@@ -53,27 +53,22 @@ namespace util {
         std::ostream& os_;
     };
 
-    std::string UrlDecode(const std::string& url_path) {
-        std::string answ;
-        auto it = url_path.begin();
-        while (it != url_path.end()) {
-            if (*it == '+') {
-                answ.push_back(' ');
-                ++it;
+    std::string UrlDecode(const std::string& s) {
+        std::string str;
+        str.reserve(s.size());
+        for (size_t i = 0; i < s.size(); ++i) {
+            if (s[i] == '%' && i + 2 < s.size()) {
+                const std::string r = s.substr(i + 1, 2);
+                str.push_back(std::stoul(r, nullptr, 16));
+                i += 2;
                 continue;
+            } else if (s[i] == '+') {
+                str.push_back(' ');
+            } else {
+                str.push_back(s[i]);
             }
-            if (*it == '%') {
-                std::string temp;
-                temp.push_back(*(++it));
-                temp.push_back(*(++it));
-                char* p_end{};
-                answ.push_back(static_cast<char>(std::strtol(temp.data(), &p_end, 16)));
-                ++it;
-                continue;
-            }
-            answ.push_back(*(it++));
         }
-        return answ;
+        return str;
     }
 
     beast::string_view MimeType(beast::string_view path) {

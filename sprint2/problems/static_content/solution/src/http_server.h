@@ -10,11 +10,14 @@
 #include <iostream>
 
 namespace http_server {
+    using namespace std::literals;
     namespace net = boost::asio;
     using tcp = net::ip::tcp;
     namespace beast = boost::beast;
     namespace sys = boost::system;
     namespace http = beast::http;
+
+    void ReportError(beast::error_code ec, std::string_view what);
 
     class SessionBase {
     public:
@@ -166,7 +169,7 @@ namespace http_server {
         using namespace std::literals;
 
         if (ec) {
-            return /* ReportError(ec, "accept"sv) */;
+            return ReportError(ec, "accept"sv);
         }
 
         std::cout << "Новое подключение принято: " << socket.remote_endpoint() << std::endl;

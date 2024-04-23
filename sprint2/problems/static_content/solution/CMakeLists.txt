@@ -33,8 +33,8 @@ add_executable(game_server
   src/request_handler.h
   src/url_parser.h
   src/url_parser.cpp
-  src/Util.cpp
-  src/Util.h
+  src/util.cpp
+  src/util.h
 )
 
 target_link_libraries(game_server PRIVATE Threads::Threads)

@@ -13,7 +13,7 @@ namespace util {
     namespace beast = boost::beast;
     namespace http = beast::http;
 
-    std::string UrlDecode(const std::string& url_path);
+    std::string UrlDecode(const std::string& s);
 
     std::string ReadFromFileIntoString(const std::filesystem::path& file_path);
 

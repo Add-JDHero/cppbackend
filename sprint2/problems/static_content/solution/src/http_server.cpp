@@ -5,6 +5,10 @@
 namespace http_server {
 //  SessionBase fucn members
 
+    void ReportError(beast::error_code ec, std::string_view what) {
+		std::cerr << what << ": "sv << ec.message() << std::endl;
+	}
+
     void SessionBase::Run() {
         // Вызываем метод Read, используя executor объекта stream_.
         // Таким образом вся работа со stream_ будет выполняться, используя его executor
