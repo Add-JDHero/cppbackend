@@ -1,5 +1,5 @@
 #include "sdk.h"
-//
+
 #include <boost/asio/io_context.hpp>
 #include <iostream>
 #include <thread>
@@ -13,7 +13,7 @@ namespace net = boost::asio;
 namespace sys = boost::system;
 
 namespace {
-
+ 
 // Запускает функцию fn на n потоках, включая текущий
 template <typename Fn>
 void RunWorkers(unsigned n, const Fn& fn) {

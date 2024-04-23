@@ -1,4 +1,5 @@
 #include "request_handler.h"
+
 #include "boost/beast/core/string_type.hpp"
 #include <variant>
 
@@ -23,15 +24,6 @@ namespace http_handler {
 
         return fs::weakly_canonical(base_path / rel_path);
     }
-    
-    // fs::path ProcessingAbsPath(std::string_view base, std::string_view rel) {
-    //     fs::path base_path = fs::canonical(base); // Используйте canonical вместо weakly_canonical
-    //     fs::path rel_path(rel);
-    //     if (!rel_path.is_absolute()) {
-    //         rel_path = base_path / rel_path;
-    //     }
-    //     return fs::canonical(rel_path); // Убедитесь, что путь существует и корректен
-    // }
 
     bool IsSubPath(fs::path path, fs::path base) {
         // Приводим оба пути к каноничному виду (без . и ..)
@@ -48,18 +40,18 @@ namespace http_handler {
     }
 
 
-    std::string JsonResponseBuilder::BadRequest(std::string_view error_message) {
+    std::string JsonResponseBuilder::BadRequest(std::string_view code, std::string_view error_message) {
         boost::json::object obj;
         obj["error"] = std::string(error_message);
-        obj["code"] = "badRequest";
+        obj["code"] = code.data();
 
         return boost::json::serialize(obj);
     }
 
-    std::string JsonResponseBuilder::NotFound(std::string_view error_message) {
+    std::string JsonResponseBuilder::NotFound(std::string_view code, std::string_view error_message) {
         boost::json::object obj;
         obj["error"] = std::string(error_message);
-        obj["code"] = "mapNotFound";
+        obj["code"] = code.data();
 
         return boost::json::serialize(obj);
     }
@@ -88,29 +80,22 @@ namespace http_handler {
     }
 
     ResponseVariant RequestHandler::HandleRequest(StringRequest&& req) {
-        // const auto json_response = [&req](http::status status, std::string_view body = {}) {
-        //     return HttpResponse::MakeStringResponse(status, 
-        //            body, 
-        //            req.version(), 
-        //            req.keep_alive(), 
-        //            ContentType::APP_JSON);
-        // };
-
-        auto json_response = [version = req.version(), keep_alive = req.keep_alive()](http::status status, std::string body = {}) {
+        auto json_response = [this, version = req.version(), keep_alive = req.keep_alive()]
+                             (http::status status, 
+                              std::string body = {},
+                              std::string_view content_type = ContentType::APP_JSON) {
             return HttpResponse::MakeStringResponse(status, 
                 body, 
                 version, 
                 keep_alive, 
-                ContentType::APP_JSON);
+                content_type);
         };
 
         if (!IsAllowedReqMethod(req.method())) {
             return json_response(http::status::method_not_allowed);
         }
 
-        std::string path = std::string(req.target());
-        auto response = ProcessRequest(path, json_response);
-        return response;
+        return ProcessRequest(req.target(), json_response);
     }
 
     RequestHandler::RequestHandler(model::Game& game)

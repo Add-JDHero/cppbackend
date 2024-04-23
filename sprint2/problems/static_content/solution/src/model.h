@@ -1,4 +1,6 @@
 #pragma once
+#include "sdk.h"
+
 #include <string>
 #include <unordered_map>
 #include <vector>

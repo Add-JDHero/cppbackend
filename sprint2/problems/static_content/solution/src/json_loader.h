@@ -1,12 +1,11 @@
 #pragma once
 
-#include <filesystem>
-#include <boost/json.hpp>
-
-#include "util.h"
+#include "sdk.h"
 #include "model.h"
 
-#define BOOST_BEAST_USE_STD_STRING_VIEW
+#include <filesystem>
+#include <boost/json.hpp>
+#include "model.h"
 
 namespace json_loader {
     namespace json = boost::json;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "sdk.h"
+
 #include <string_view>
 #include <vector>
 #include <string>

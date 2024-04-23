@@ -1,12 +1,11 @@
 #pragma once
 
-#include "boost/utility/string_view.hpp"
-#include "boost/utility/string_view_fwd.hpp"
+#include "sdk.h" 
 #include "http_server.h"
 #include "json_loader.h"
 #include "model.h"
 #include "url_parser.h"
-#include "util.h"
+#include "Util.h"
 
 #include <boost/json/serialize.hpp>
 #include <string_view>
@@ -15,9 +14,6 @@
 #include <variant>
 #include <boost/json.hpp>
 #include <cassert>
-
-#define BOOST_BEAST_USE_STD_STRING_VIEW
-
 
 namespace http_handler {
 
@@ -49,15 +45,18 @@ namespace http_handler {
     struct ContentType {
         ContentType() = delete;
         constexpr static std::string_view TEXT_HTML = "text/html"sv;
+        constexpr static std::string_view TEXT_PLAIN = "text/plain"sv;
         constexpr static std::string_view APP_JSON = "application/json"sv;
         // При необходимости внутрь ContentType можно добавить и другие типы контента
     };
 
     class JsonResponseBuilder {
     public:
-        static std::string BadRequest(std::string_view error_message = "Bad Request");
+        static std::string BadRequest(std::string_view code = "badRequest", 
+                                      std::string_view error_message = "Bad Request");
 
-        static std::string NotFound(std::string_view error_message = "Map not found");
+        static std::string NotFound(std::string_view code = "notFound",
+                                    std::string_view error_message = "Not found");
     };
 
     class HttpResponse {
@@ -150,7 +149,8 @@ namespace http_handler {
         const char* root_dir_;
 
         template <typename Handler>
-        StringResponse HandleApiRequest(const std::vector<std::string>& path_components, const Handler& json_response) {
+        StringResponse HandleApiRequest(const std::vector<std::string>& path_components, 
+                                        const Handler& json_response) {
             if (path_components.size() >= 3 && path_components[0] == "api" && 
                 path_components[1] == "v1" && path_components[2] == "maps") {
 
@@ -165,19 +165,18 @@ namespace http_handler {
         }
 
         template <typename Handler>
-        ResponseVariant HandleGetFileRequest(std::string req_path, const Handler& json_response) {
+        ResponseVariant HandleGetFileRequest(std::string_view req_path, const Handler& json_response) {
             fs::path base_path = fs::weakly_canonical(root_dir_);
             fs::path abs_path = ProcessingAbsPath(root_dir_, req_path);
 
-            auto abs_path_str = abs_path.string();
-
             if (IsSubPath(abs_path, base_path)) {
-                // auto result = util::ReadStaticFile(abs_path);
+                if (fs::exists(abs_path)) {
+                    return util::ReadStaticFile(abs_path);
+                }
 
-                // auto result = util::TestFunc(abs_path);
-                // return json_response(http::status::ok, util::ReadFromFileIntoString(abs_path));
-                return json_response(http::status::ok, util::TestFunc(abs_path));
-                // return result;
+                return json_response(http::status::not_found, 
+                                     JsonResponseBuilder::NotFound("fileNotFound", "File not found"),
+                                     ContentType::TEXT_PLAIN);
             }
 
             return HandleBadRequest(json_response);
@@ -185,15 +184,15 @@ namespace http_handler {
 
         template <typename Handler>
         ResponseVariant ProcessRequest(std::string_view path, const Handler& json_response) {
-            url::UrlParser parser( (std::string(path)) );
+            std::string decoded_path = util::UrlDecode(std::string(path));
+            url::UrlParser parser(decoded_path);
             auto path_components = parser.GetComponents();
 
             if (path_components.size() > 0 && path_components[0] == "api"sv) {
                 return HandleApiRequest(path_components, json_response);
             }
 
-            auto path_sv = std::string(path.data());
-            return HandleGetFileRequest(path_sv, json_response);
+            return HandleGetFileRequest(decoded_path, json_response);
         }
 
         template <typename Handler>
@@ -204,21 +203,37 @@ namespace http_handler {
         }
 
         template <typename Handler>
-        StringResponse HandleGetMapDetailsRequest(std::string_view map_id, const Handler& json_response) const {
+        StringResponse HandleGetMapDetailsRequest(std::string_view map_id, 
+                                                  const Handler& json_response) const {
             const model::Map::Id id{std::string(map_id)};
             auto map_ptr = game_.FindMap(id);
             
             if (map_ptr) {
-                std::string map = boost::json::serialize(json_loader::MapSerializer::SerializeSingleMap(*map_ptr));
-                return json_response(http::status::ok, map);
+                auto map_json = json_loader::MapSerializer::SerializeSingleMap(*map_ptr);
+                std::string serialized_map = boost::json::serialize(std::move(map_json));
+                return json_response(http::status::ok, serialized_map);
             }
 
-            return json_response(http::status::not_found, JsonResponseBuilder::NotFound());
+            return HandleNotFound(json_response, "mapNotFound", "Map not found");
         }
 
         template <typename Handler>
-        static StringResponse HandleBadRequest(const Handler& json_response) {
-            return json_response(http::status::bad_request, JsonResponseBuilder::BadRequest());
+        static StringResponse HandleBadRequest(const Handler& json_response, std::string_view error_code = {}) {
+            bool has_error_code = error_code.size() > 0;
+            std::string ans_body = has_error_code 
+                ? JsonResponseBuilder::BadRequest(error_code) 
+                : JsonResponseBuilder::BadRequest();
+            return json_response(http::status::bad_request, ans_body);
+        }
+
+        template <typename Handler>
+        static StringResponse HandleNotFound(const Handler& json_response, 
+                                             std::string_view error_code = {}, std::string_view error_msg = {}) {
+            bool has_error_code = error_code.size() > 0;
+            std::string ans_body = has_error_code 
+                ? JsonResponseBuilder::NotFound(error_code) 
+                : JsonResponseBuilder::NotFound();
+            return json_response(http::status::not_found, ans_body);
         }
     };
 

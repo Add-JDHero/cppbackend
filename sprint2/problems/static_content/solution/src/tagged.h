@@ -1,4 +1,7 @@
 #pragma once
+
+#include "sdk.h"
+
 #include <compare>
 #include <utility>
 #include <string>

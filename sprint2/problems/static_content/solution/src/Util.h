@@ -1,9 +1,10 @@
 #pragma once 
+#include "sdk.h"
 
+#include <boost/beast.hpp>
 #include <filesystem>
 #include <fstream>
-#include <boost/json.hpp>
-#include <boost/beast.hpp>
+// #include <boost/json.hpp>
 
 const int BUFF_SIZE = 1024;
 
@@ -12,10 +13,12 @@ namespace util {
     namespace beast = boost::beast;
     namespace http = beast::http;
 
+    std::string UrlDecode(const std::string& url_path);
+
     std::string ReadFromFileIntoString(const std::filesystem::path& file_path);
 
-    beast::string_view MimeType(beast::string_view path);
-
+    std::string_view MimeType(std::string_view path);
+ 
     std::string TestFunc(const std::filesystem::path& file_path);
 
     std::string ExtractFileExtension(const std::filesystem::path& path);

@@ -1,12 +1,10 @@
 #include "json_loader.h"
-#include "util.h"
+#include "Util.h"
 
 #include <fstream>
 #include <sstream>
 #include <cassert>
 #include <iostream>
-
-#define BOOST_BEAST_USE_STD_STRING_VIEW
 
 namespace json_loader {
 

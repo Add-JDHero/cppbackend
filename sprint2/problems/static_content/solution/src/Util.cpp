@@ -1,4 +1,5 @@
-#include "util.h"
+#include "Util.h"
+
 #include <filesystem>
 
 namespace util {
@@ -51,6 +52,29 @@ namespace util {
     private:
         std::ostream& os_;
     };
+
+    std::string UrlDecode(const std::string& url_path) {
+        std::string answ;
+        auto it = url_path.begin();
+        while (it != url_path.end()) {
+            if (*it == '+') {
+                answ.push_back(' ');
+                ++it;
+                continue;
+            }
+            if (*it == '%') {
+                std::string temp;
+                temp.push_back(*(++it));
+                temp.push_back(*(++it));
+                char* p_end{};
+                answ.push_back(static_cast<char>(std::strtol(temp.data(), &p_end, 16)));
+                ++it;
+                continue;
+            }
+            answ.push_back(*(it++));
+        }
+        return answ;
+    }
 
     beast::string_view MimeType(beast::string_view path) {
         using beast::iequals;
@@ -112,36 +136,14 @@ namespace util {
         return str;
     }
 
-    std::string TestFunc(const std::filesystem::path& file_path) {
-        // std::ifstream config_file(file_path, std::ios::in | std::ios::binary);
-
-        // if (!config_file.is_open()) {
-        //     throw std::runtime_error("Failed to open file: " + file_path.string());
-        // }
-
-        // char buff[BUFF_SIZE];
-        // std::string str = "";
-        // std::streamsize count = 0;
-        // while ( config_file.read(buff, BUFF_SIZE) || (count = config_file.gcount()) ) {
-        //     str.append(buff, count);
-        // }
-
-        // return str;
-        return {};
-    }
-
     http::response<http::file_body> ReadStaticFile(const std::filesystem::path& file_path) {
         http::response<http::file_body> res;
         res.version(11);  // HTTP/1.1
         res.result(http::status::ok);
-        auto res_extention = MimeType(ExtractFileExtension(file_path));
-        res.insert(http::field::content_type, res_extention);
+        const std::string_view content_type = MimeType(ExtractFileExtension(file_path));
+        res.set(http::field::content_type, content_type);
 
         http::file_body::value_type file;
-
-        if (!std::filesystem::exists(file_path)) {
-            throw;
-        }
 
         if (sys::error_code ec; file.open(file_path.c_str(), beast::file_mode::read, ec), ec) {
             throw std::runtime_error("Failed to open file: " + file_path.string());
@@ -150,7 +152,7 @@ namespace util {
         res.body() = std::move(file);
         // Метод prepare_payload заполняет заголовки Content-Length и Transfer-Encoding
         // в зависимости от свойств тела сообщения
-        // res.prepare_payload();
+        res.prepare_payload();
 
         return res;
     }
