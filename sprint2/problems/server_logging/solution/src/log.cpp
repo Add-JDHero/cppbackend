@@ -6,7 +6,8 @@ void SetupLogging() {
 
     logging::add_console_log(
         std::clog,
-        keywords::format = &JsonFormatter
+        keywords::format = &JsonFormatter,
+        logging::keywords::auto_flush = true
     );
 }
 
