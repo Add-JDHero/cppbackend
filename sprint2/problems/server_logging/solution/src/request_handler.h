@@ -191,6 +191,8 @@ namespace http_handler {
         fs::path base_path = fs::weakly_canonical(root_dir_);
         fs::path abs_path = ProcessingAbsPath(root_dir_, req_path);
 
+        std::cout << abs_path.c_str() << std::endl;
+
         if (IsSubPath(abs_path, base_path)) {
             if (fs::exists(abs_path)) {
                 return util::ReadStaticFile(abs_path);

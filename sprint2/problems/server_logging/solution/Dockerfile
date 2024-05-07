@@ -16,12 +16,10 @@ RUN conan profile new default --detect
 # копируем conanfile.txt в контейнер и запускаем conan install
 COPY conanfile.txt /app/
 RUN mkdir /app/build && cd /app/build && \
-    conan install .. --build=missing
-
+    conan install .. --build=missing -s build_type=Release -s compiler.libcxx=libstdc++11
 
 # Скопировать файлы проекта внутрь контейнера
 COPY ./src /app/src
-COPY ./data /app/data
 COPY CMakeLists.txt /app/
 
 RUN cd /app/build && \

@@ -4,19 +4,19 @@ project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CXX_STANDARD_REQUIRED ON)
 
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+include(${CMAKE_BINARY_DIR}/conanbuildinfo_multi.cmake)
 conan_basic_setup(TARGETS)
 
-get_property(importTargets DIRECTORY "${CMAKE_SOURCE_DIR}" PROPERTY IMPORTED_TARGETS)
-message(STATUS "${importTargets}") 
+# get_property(importTargets DIRECTORY "${CMAKE_SOURCE_DIR}" PROPERTY IMPORTED_TARGETS)
+# message(STATUS "${importTargets}") 
 
-find_package(Boost 1.78.0 REQUIRED)
-if(Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIRS})
-endif()
+# find_package(Boost 1.78.0 REQUIRED)
+# if(Boost_FOUND)
+#   include_directories(${Boost_INCLUDE_DIRS})
+# endif()
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
+# set(THREADS_PREFER_PTHREAD_FLAG ON)
+# find_package(Threads REQUIRED)
 
 add_executable(game_server
   src/main.cpp
@@ -36,7 +36,7 @@ add_executable(game_server
   src/util.cpp
   src/util.h
   src/log.cpp
-  src/log.cpp
+  src/log.h
 )
 
 target_include_directories(game_server PRIVATE CONAN_PKG::boost)

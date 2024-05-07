@@ -6,6 +6,7 @@
 #include <boost/log/utility/setup/console.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/date_time.hpp>
+#include <string_view>
 #include <boost/log/utility/manipulators/add_value.hpp>
 #include <boost/json.hpp>
 
