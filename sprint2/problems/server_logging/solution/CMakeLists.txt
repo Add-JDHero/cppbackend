@@ -7,6 +7,8 @@ set(CXX_STANDARD_REQUIRED ON)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo_multi.cmake)
 conan_basic_setup(TARGETS)
 
+#find_package(Boost COMPONENTS log REQUIRED)
+
 # get_property(importTargets DIRECTORY "${CMAKE_SOURCE_DIR}" PROPERTY IMPORTED_TARGETS)
 # message(STATUS "${importTargets}") 
 
@@ -39,5 +41,6 @@ add_executable(game_server
   src/log.h
 )
 
-target_include_directories(game_server PRIVATE CONAN_PKG::boost)
-target_link_libraries(game_server CONAN_PKG::boost) 
+target_link_libraries(game_server CONAN_PKG::boost 
+	#	Boost::log
+) 
