@@ -1,0 +1,22 @@
+# Change to directory where compile_commands.json is
+compilation_database_dir: ./build
+# Change to directory where diagram should be written
+output_directory: docs/diagrams
+diagrams:
+  http_handler:
+    type: class
+    glob:
+      - src/*.cpp
+      - src/*.h
+    using_namespace:
+      - HTTP
+    include:
+      namespaces:
+        - http_handler
+        - router
+    exclude:
+      namespaces:
+        - std
+        - boost
+        - http_handler::HttpResponse
+        - http_handler::ErrorHandler

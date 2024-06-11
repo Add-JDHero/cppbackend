@@ -256,6 +256,8 @@ namespace model {
         }
 
         std::shared_ptr<GameSession> FindGameSession(Map::Id map_id) {
+            if (!FindMap(map_id)) { return nullptr;}
+
             if (map_id_to_session_index_.count(map_id)) {
                 return FindGameSessionBySessionId(map_id_to_session_index_[map_id]);
             }

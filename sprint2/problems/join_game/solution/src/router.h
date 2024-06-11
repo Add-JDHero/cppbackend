@@ -87,6 +87,8 @@ namespace router {
 
     private:
         std::unordered_map<std::string, std::unique_ptr<Trie>> trie_;
+        std::unordered_map<std::string, 
+            std::vector<std::string>> path_to_allowed_methods_;
     };
 
 }

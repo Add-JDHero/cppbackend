@@ -1,6 +1,7 @@
 #pragma once
 
-#include "sdk.h" 
+#include "sdk.h"
+
 #include "util.h"
 #include "model.h"
 #include "http_server.h"
@@ -62,7 +63,7 @@ namespace http_handler {
         SpecialStrings() = delete;
 
          constexpr static std::string_view AUTH_TOKEN = "authToken"sv;
-         constexpr static std::string_view PLAYER_ID = "playerID"sv;
+         constexpr static std::string_view PLAYER_ID = "playerId"sv;
     };
 
     class ErrorHandler {
@@ -116,7 +117,7 @@ namespace http_handler {
 
     private:
 
-        bool IsValidAuthToken(const std::string& auth_header) const;
+        bool IsValidAuthToken(std::string& auth_header) const;
 
         std::optional<StringResponse> IsAllowedMethod(const StringRequest& req, 
                                                       JsonResponseHandler json_response,
@@ -302,6 +303,9 @@ namespace http_handler {
                     // внутри strand
                     assert(self->api_strand_.running_in_this_thread());
                     ResponseVariant result = self->router_->Route(req);
+                    std::visit([&send](auto&& res){
+                        res.set(http::field::cache_control, "no-cache");
+                    }, result);
                     req.method_string() == 
                         "HEAD" ? result = self->CopyResponseWithoutBody(result) : result;
                     return send(std::move(result));

@@ -119,6 +119,7 @@ namespace router {
                 trie_[method] = std::make_unique<Trie>();
             }
             trie_[method]->AddRoute(method, path, std::move(handler), intermediate);
+            path_to_allowed_methods_[path].push_back(method);
         }
     }
 
@@ -149,7 +150,15 @@ namespace router {
                         }, std::move(response));
                     }
                 }
-            }
+            } else {
+                return http_handler::ErrorHandler::
+                    MakeNotAllowedResponse(json_response, path_to_allowed_methods_[path],
+                                            "invalidMethod","Invalid method");
+            } 
+        } else {
+            return http_handler::ErrorHandler::
+                MakeNotAllowedResponse(json_response, path_to_allowed_methods_[path],
+                                       "invalidMethod", "Invalid method");
         }
 
         return http_handler::ErrorHandler::MakeBadRequestResponse(json_response);
