@@ -13,7 +13,7 @@ namespace beast = boost::beast;
 namespace http = beast::http;
 
 using JsonResponseHandler = 
-                std::function<http_handler::StringResponse(http::status, std::string, std::string_view)>;
+        std::function<http_handler::StringResponse(http::status, std::string, std::string_view)>;
 
 class HandlerBase {
 public:
@@ -23,7 +23,8 @@ public:
 };
 
 class HTTPResponseMaker : public HandlerBase {
-    using ResponseMaker = http_handler::ResponseVariant(const http_handler::StringRequest&, JsonResponseHandler);
+    using ResponseMaker = http_handler::ResponseVariant(const http_handler::StringRequest&, 
+                                                        JsonResponseHandler);
 public:
     HTTPResponseMaker(std::function<ResponseMaker> handler);
 

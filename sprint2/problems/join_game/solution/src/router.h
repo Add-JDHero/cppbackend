@@ -30,6 +30,7 @@ namespace router {
         std::unique_ptr<ParamsSet> params;
         std::vector<HandlerPtr> handlers;
         std::vector<HandlerPtr> intermediateHandlers;
+        HandlerPtr default_handler;
         bool is_param = false;
 
     };
@@ -47,10 +48,15 @@ namespace router {
         
         std::vector<HandlerPtr>* GetHandlers(const std::string& path/* , 
                                              std::unordered_map<std::string, std::string>& params */);
+                                             
+        std::vector<std::string> SplitPath(const std::string& path) const;
+
+        bool HasRoute(const std::string& method, const std::string& path);
 
     private:
         std::unique_ptr<TrieNode> root_;
         std::string method_;
+
 
         std::string_view GetMethod() const;
 
@@ -60,7 +66,6 @@ namespace router {
                               std::unordered_map<std::string, std::string>& params */);
         TrieNode* AddSegmentNode(TrieNode* node, const std::string& segment);
 
-        std::vector<std::string> SplitPath(const std::string& path) const;
     };
 
     class Router {
@@ -73,6 +78,12 @@ namespace router {
                       bool intermediate = false);
 
         ResponseVariant Route(const StringRequest& req);
+
+        std::vector<std::string> FindPath(const std::string& method, const std::string& path);
+
+        bool HasRoute(const std::string& method, const std::string& path);
+        bool IsAllowedMethod(const std::string& method, const std::string& path);
+
 
     private:
         std::unordered_map<std::string, std::unique_ptr<Trie>> trie_;

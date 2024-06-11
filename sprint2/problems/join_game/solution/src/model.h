@@ -1,5 +1,6 @@
 #pragma once
 #include "sdk.h"
+#include "tagged.h"
 
 #include <string>
 #include <unordered_map>
@@ -7,7 +8,6 @@
 #include <vector>
 #include <numeric>
 
-#include "tagged.h"
 
 namespace model {
 
@@ -178,7 +178,7 @@ namespace model {
     public:
         using Id = uint64_t;
 
-        Dog(std::string name) : name_(name), id_(general_id_++) {};
+        Dog(std::string_view name) : name_(std::string(name)), id_(general_id_++) {};
 
         const Id GetId() const {
             return id_;
@@ -199,14 +199,19 @@ namespace model {
     };
 
     class GameSession {
-        // using Id = util::Tagged<uint64_t, Dog>;
+    public:
+        using Id = uint64_t;
         // using DogIdHasher = util::TaggedHasher<Id>;
         using Dogs = std::unordered_map<Dog::Id, std::shared_ptr<Dog>/*, DogIdHasher */>;
     public:
-        GameSession(const Map& map) : map_(map){}
+        GameSession(const Map& map) : map_(map), id_(++(general_id_)){}
 
         Map::Id GetMapId() const {
             return map_.GetId();
+        }
+
+        Id GetSessionId() const {
+            return general_id_;
         }
 
         void AddDog(std::shared_ptr<Dog> dog) {
@@ -217,6 +222,15 @@ namespace model {
             return dogs_;
         }
 
+        const std::vector<std::string> GetPlayersNames() const {
+            std::vector<std::string> names;
+            for (const auto& [dog_id, dog]: dogs_) {
+                names.push_back(dog->GetName());
+            }
+
+            return names;
+        }
+
         bool HasDog(Dog::Id id) {
             return dogs_.count(id) > 0;
         }
@@ -224,6 +238,10 @@ namespace model {
     private:
         Dogs dogs_;
         const Map& map_;
+
+        Id id_;
+
+        static inline Id general_id_{0};
     };
 
     class Game {
@@ -237,6 +255,37 @@ namespace model {
             return maps_;
         }
 
+        std::shared_ptr<GameSession> FindGameSession(Map::Id map_id) {
+            if (map_id_to_session_index_.count(map_id)) {
+                return FindGameSessionBySessionId(map_id_to_session_index_[map_id]);
+            }
+
+            return CreateGameSession(map_id);
+        }
+
+        std::shared_ptr<GameSession> CreateGameSession(Map::Id map_id) {
+            auto result = std::make_shared<GameSession>(maps_[map_id_to_index_[map_id]]);
+            int index = sessions_.size();
+            sessions_.push_back(result);
+            game_sessions_id_to_index_[result->GetSessionId()] = index;
+            map_id_to_session_index_[map_id] = result->GetSessionId();
+
+            return result;
+        }
+
+        /* 
+        std::shared_ptr<GameSession> ConnectToSession(Map::Id map_id, std::string& user_name) {
+            std::shared_ptr<GameSession> result = FindGameSession(map_id);
+
+            if (result == nullptr) {
+                result = CreateGameSession(map_id);
+            }
+
+
+
+            return result;
+        } */
+
         const Map* FindMap(const Map::Id& id) const noexcept {
             if (auto it = map_id_to_index_.find(id); it != map_id_to_index_.end()) {
                 return &maps_.at(it->second);
@@ -246,12 +295,28 @@ namespace model {
         }
 
     private:
+
+        std::shared_ptr<GameSession> FindGameSessionBySessionId(GameSession::Id session_id) {
+            if (game_sessions_id_to_index_.count(session_id)) {
+                return sessions_[game_sessions_id_to_index_[session_id]];
+            }
+
+            return nullptr;
+        }
+
         using MapIdHasher = util::TaggedHasher<Map::Id>;
         using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;
 
+        using GameSessionIdToIndex = std::unordered_map<GameSession::Id, size_t>;
+        using MapIdToGameSessions = std::unordered_map<Map::Id, GameSession::Id, MapIdHasher>;
+
+
         std::vector<Map> maps_;
         MapIdToIndex map_id_to_index_;
-        GameSessions game_sessions_;
+        MapIdToGameSessions map_id_to_session_index_;
+
+        GameSessions sessions_;
+        GameSessionIdToIndex game_sessions_id_to_index_;
     };
 
 }  // namespace model

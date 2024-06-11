@@ -126,20 +126,16 @@ namespace router {
         auto ver = req.version();
         auto keep = req.keep_alive();
         auto json_response = 
-            [this, version = ver, keep_alive = keep](http::status status, 
-                                                     std::string body = {}, 
+            [this, version = ver, keep_alive = keep](http::status status, std::string body = {}, 
                                                      std::string_view content_type = 
                                                         http_handler::ContentType::APP_JSON) {
-            return http_handler::HttpResponse::MakeStringResponse(status, 
-                                                                  body, 
-                                                                  version, 
-                                                                  keep_alive, 
-                                                                  content_type);
+            return http_handler::HttpResponse::MakeStringResponse(status, body, version, 
+                                                                  keep_alive, content_type);
         };
 
-        std::unordered_map<std::string, std::string> params;
+        // std::unordered_map<std::string, std::string> params;
         auto method = std::string(req.method_string());
-        auto path = std::string(req.target());
+        auto path = util::UrlDecode(std::string(req.target()));
 
         if (trie_.find(method) != trie_.end()) {
             auto handlers = trie_[method]->GetHandlers(path/* , params */);
@@ -148,7 +144,7 @@ namespace router {
                     auto response = handler->Invoke(req, json_response);
                     if (std::holds_alternative<http_handler::StringResponse>(response) || 
                         std::holds_alternative<http_handler::FileResponse>(response)) {
-                        return std::visit([](auto&& arg) -> http_handler::ResponseVariant {
+                        return std::visit([&req](auto&& arg) -> http_handler::ResponseVariant {
                             return std::move(arg);
                         }, std::move(response));
                     }
@@ -159,4 +155,40 @@ namespace router {
         return http_handler::ErrorHandler::MakeBadRequestResponse(json_response);
     }
 
+    bool Trie::HasRoute(const std::string& method, const std::string& path) {
+        bool has_route = false;
+        auto path_components = SplitPath(path);
+
+        TrieNode* node = root_.get();
+        for (const auto& segment: path_components) {
+            node = GetNextNode(node, segment);
+
+            if (!node) { return false; }
+        }
+
+        return true;
+    }
+
+    bool Router::HasRoute(const std::string& method, const std::string& path) {
+        if (trie_.count(method)) {
+            return trie_[method]->HasRoute(method, path);
+        } 
+
+        return false;
+    }
+
+    std::vector<std::string> Router::FindPath(const std::string& method, const std::string& path) {
+        std::vector<std::string> relevant_methods;
+        for (const auto& [method, trie]: trie_) {
+            if (trie_[method]->HasRoute(method, path)) {
+                relevant_methods.push_back(method);
+            }
+        }
+
+        return relevant_methods;
+    }
+
+    bool Router::IsAllowedMethod(const std::string& method, const std::string& path) {
+        return FindPath(method, path).size() > 0;
+    }
 }

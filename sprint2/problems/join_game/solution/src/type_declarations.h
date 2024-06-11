@@ -15,7 +15,8 @@ namespace http_handler {
     using StringRequest = http::request<http::string_body>;
     // Ответ, тело которого представлено в виде строки
     using StringResponse = http::response<http::string_body>;
+    using EmptyResponse = http::response<http::empty_body>;
 
     using FileResponse = http::response<http::file_body>;
-    using ResponseVariant = std::variant<StringResponse, FileResponse>;
+    using ResponseVariant = std::variant<EmptyResponse, StringResponse, FileResponse>;
 }

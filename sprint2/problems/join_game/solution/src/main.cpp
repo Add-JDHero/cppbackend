@@ -56,7 +56,7 @@ int main(int argc, const char* argv[]) {
         });
 
         // 4. Создаём обработчик HTTP-запросов и связываем его с моделью игры
-        http_handler::RequestHandler handler(game, strand, argv[2]);
+        auto handler = std::make_shared<http_handler::RequestHandler>(game, strand, argv[2]);
         http_handler::LoggingRequestHandler logging_handler(handler);
 
         // 5. Запустить обработчик HTTP-запросов, делегируя их обработчику запросов

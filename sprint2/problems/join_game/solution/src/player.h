@@ -3,6 +3,7 @@
 #include "sdk.h"
 #include "model.h"
 
+#include <cstdint>
 #include <memory>
 #include <random>
 #include <unordered_map>
@@ -21,7 +22,7 @@ namespace app {
         Player() = delete;
         Player(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> game_session):
             dog_(dog), 
-            game_session_(game_session){
+            game_session_(game_session) {
             game_session->AddDog(dog_);
         }
 
@@ -33,6 +34,12 @@ namespace app {
             return game_session_;
         }
 
+        std::vector<std::string> GetListOfPlayersNickNames() {
+            auto result = game_session_->GetPlayersNames();
+            
+            return result;
+        }
+
 	private:
         std::shared_ptr<model::Dog> dog_;
 		std::shared_ptr<model::GameSession> game_session_;
@@ -42,6 +49,8 @@ namespace app {
 
     class PlayerTokens {
     public:
+        PlayerTokens() = default;
+
         Token AddPlayer(std::shared_ptr<Player> player) {
             Token token = GenerateToken();
             token_to_player_[token] = player;
@@ -58,7 +67,8 @@ namespace app {
         }
 
     private:
-        std::unordered_map<Token, std::shared_ptr<Player>> token_to_player_;
+        using TokenHasher = util::TaggedHasher<Token>;
+        std::unordered_map<Token, std::shared_ptr<Player>, TokenHasher> token_to_player_;
 
         std::random_device random_device_;
         std::mt19937_64 generator1_{[this] {
@@ -75,8 +85,25 @@ namespace app {
 
     class Players {
     public:
-        std::shared_ptr<Player> Add(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> game_session) {
-            return players_[{dog->GetId(), *(game_session->GetMapId())}] = std::make_shared<Player>(dog, game_session);
+        Token Add(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> game_session) {
+            std::shared_ptr<Player> player = std::make_shared<Player>(dog, game_session);
+            Token token = player_tokens_.AddPlayer(player);
+            players_[{dog->GetId(), *(game_session->GetMapId())}] = 
+                std::make_shared<Player>(dog, game_session);
+        
+            return token;
+        }
+
+        /* uint64_t GetPlayerID(model::Dog::Id dog_id, model::Map::Id map_id) {
+            auto player = FindByDogAndMapId(dog_id, map_id);
+
+            auto id = player->GetDogId();
+
+            return id;
+        } */
+
+        std::shared_ptr<Player> GetPlayerByToken(Token token) {
+            return player_tokens_.FindPlayerByToken(token);
         }
 
         std::shared_ptr<Player> FindByDogAndMapId(model::Dog::Id dog_id, model::Map::Id map_id) {
@@ -84,7 +111,9 @@ namespace app {
         }
 
     private:
-        std::unordered_map<std::pair<uint64_t, std::string>, std::shared_ptr<Player>, boost::hash<std::pair<uint64_t, std::string>>> players_;
+        PlayerTokens player_tokens_;
+        std::unordered_map<std::pair<uint64_t, std::string>, 
+            std::shared_ptr<Player>, boost::hash<std::pair<uint64_t, std::string>>> players_;
 
     };
 }
