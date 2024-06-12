@@ -34,12 +34,6 @@ namespace app {
             return game_session_;
         }
 
-        std::vector<std::string> GetListOfPlayersNickNames() {
-            auto result = game_session_->GetPlayersNames();
-            
-            return result;
-        }
-
 	private:
         std::shared_ptr<model::Dog> dog_;
 		std::shared_ptr<model::GameSession> game_session_;
@@ -114,6 +108,18 @@ namespace app {
         PlayerTokens player_tokens_;
         std::unordered_map<std::pair<uint64_t, std::string>, 
             std::shared_ptr<Player>, boost::hash<std::pair<uint64_t, std::string>>> players_;
+
+    };
+
+    class Application {
+    public:
+        explicit Application(model::Game& game, Players& players);
+        
+        const std::vector<std::string> GetPlayersList(Token token) const;
+
+    private:
+		model::Game& game_;
+		Players& players_;
 
     };
 }

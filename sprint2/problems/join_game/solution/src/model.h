@@ -13,9 +13,8 @@ namespace model {
 
     using Dimension = int64_t;
     using Coord = Dimension;
-    using Speed = double;
-
-    enum class Direction {NORTH, SOUTH, WEST, EAST};
+    
+    enum class Direction {NORTH, SOUTH, WEST, EAST, DEFAULT};
 
     struct Point {
         Coord x, y;
@@ -23,6 +22,10 @@ namespace model {
 
     struct Size {
         Dimension width, height;
+    };
+
+    struct Speed {
+        Dimension x, y;
     };
 
     struct Rectangle {
@@ -187,10 +190,23 @@ namespace model {
             return name_;
         }
 
+         const Point& GetPosition() const noexcept {
+            return pos_;
+        }
+
+        const Speed& GetSpeed() const noexcept {
+            return speed_;
+        }
+
+        const Direction& GetDirection() const noexcept {
+            return direction_;
+        }
+
     private:
         Point pos_;
         Direction dir_;
-        Speed speed_;
+        Speed speed_{0, 0};
+        Direction direction_{Direction::NORTH};
 
         std::string name_;
         Id id_;

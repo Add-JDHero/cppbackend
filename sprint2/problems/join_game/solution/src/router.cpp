@@ -19,7 +19,7 @@ namespace router {
 
     void Trie::AddRoute(const std::string& method, 
                         const std::string& path, 
-                        HandlerPtr&& handler, 
+                        HandlerPtr handler, 
                         bool intermediate) {
         TrieNode* node = root_.get();
         auto segments = SplitPath(path);
@@ -112,15 +112,16 @@ namespace router {
 
     void Router::AddRoute(const std::vector<std::string>& methods, 
                           const std::string& path, 
-                          HandlerPtr&& handler, 
+                          HandlerPtr handler, 
                           bool intermediate) {
         for (const auto& method : methods) {
             if (!trie_.count(method)) {
                 trie_[method] = std::make_unique<Trie>();
             }
-            trie_[method]->AddRoute(method, path, std::move(handler), intermediate);
-            path_to_allowed_methods_[path].push_back(method);
+            trie_[method]->AddRoute(method, path, handler, intermediate);
         }
+        
+        path_to_allowed_methods_[path] = methods;
     }
 
     http_handler::ResponseVariant Router::Route(const http_handler::StringRequest& req) {

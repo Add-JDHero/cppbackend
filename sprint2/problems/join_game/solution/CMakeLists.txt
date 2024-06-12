@@ -36,6 +36,8 @@ add_executable(game_server
   src/type_declarations.h
   src/handlers.h
   src/handlers.cpp
+  src/util_tests.h
+  src/util_tests.cpp
 )
 
 target_link_libraries(game_server CONAN_PKG::boost) 

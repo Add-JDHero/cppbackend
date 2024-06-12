@@ -4,14 +4,17 @@
 
 namespace app {
 	Token PlayerTokens::GenerateToken() {
-        std::stringstream ss;
+    std::ostringstream ss;
+    ss << std::hex << std::setw(16) << std::setfill('0') << generator1_()
+       << std::setw(16) << std::setfill('0') << generator2_();
+    return Token{ss.str()};
+}
 
-        std::uniform_int_distribution<uint64_t> dist;
-        uint64_t part1 = dist(generator1_);
-        uint64_t part2 = dist(generator2_);
+    Application::Application(model::Game& game, Players& players) 
+        : game_(game), players_(players) {}
 
-        ss << std::hex << std::setfill('0') 
-           << std::setw(16) << part1 << std::setw(16) << part2;
-        return Token{ss.str()};
+    const std::vector<std::string> Application::GetPlayersList(Token token) const {
+        auto game_session = players_.GetPlayerByToken(token)->GetGameSession();            
+        return game_session->GetPlayersNames();
     }
 }

@@ -151,4 +151,47 @@ namespace util {
 
         return res;
     }
+
+    bool IsDigit(char c) {
+        return c >= '0' && c <= '9';
+    }
+
+    bool IsLetter(char c) {
+        return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z';
+    }
+
+    std::string ExtractToken(const std::string& auth_header) {
+        auto copy = auth_header;
+        copy.erase(std::remove(copy.begin(), copy.end(), '\r'), copy.end());
+        copy.erase(std::remove(copy.begin(), copy.end(), '\n'), copy.end());
+        
+        auto auth_header_sv = std::string_view(copy);
+        std::string prefix = "Bearer";
+        if (auth_header.starts_with(prefix)) {
+            auth_header_sv.remove_prefix(prefix.size());
+        }
+
+        if (auth_header_sv.size() < 32) {
+            return "";
+        }
+
+        // clear ...{token}
+        int i = 0;
+        while (auth_header_sv.size() > 0 && 
+            !(IsLetter(auth_header_sv[i]) || IsDigit(auth_header_sv[i]))) {
+            auth_header_sv.remove_prefix(1);
+        }
+
+        // clear {token}...
+        int j = auth_header_sv.size() - 1;
+        while (auth_header_sv.size() > 0 && 
+            !(IsLetter(auth_header_sv[j]) || IsDigit(auth_header_sv[j]))) {
+            auth_header_sv.remove_suffix(1);
+            j = auth_header_sv.size() - 1;
+        }
+
+        std::string token = std::string(auth_header_sv);
+            
+        return token;
+    }
 }

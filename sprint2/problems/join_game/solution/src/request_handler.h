@@ -30,16 +30,12 @@ namespace json = boost::json;
 namespace fs = std::filesystem;
 
 namespace http_handler {
-
     namespace separating_chars {
         constexpr const char SLASH = '/';
         constexpr const char BACK_SLASH = '\\';
     }
 
     bool IsSubPath(fs::path path, fs::path base);
-
-    // bool IsAllowedReqMethod(beast::http::verb method);
-
     fs::path ProcessingAbsPath(std::string_view base, std::string_view rel);
     
     // Запрос, тело которого представлено в виде строки
@@ -56,7 +52,6 @@ namespace http_handler {
         constexpr static std::string_view TEXT_HTML = "text/html"sv;
         constexpr static std::string_view TEXT_PLAIN = "text/plain"sv;
         constexpr static std::string_view APP_JSON = "application/json"sv;
-        // При необходимости внутрь ContentType можно добавить и другие типы контента
     };
 
     struct SpecialStrings {
@@ -130,6 +125,8 @@ namespace http_handler {
         model::Game& game_;
         fs::path root_dir_;
         app::Players& players_;
+        app::Application app_{game_, players_};
+
         std::shared_ptr<router::Router> router_;
     };
 

@@ -5,9 +5,12 @@
 #include <thread>
 #include <boost/asio/signal_set.hpp>
 
+#include "util_tests.h"
 #include "json_loader.h"
 #include "log.h"
 #include "request_handler.h"
+
+// #define TESTS
 
 using namespace std::literals;
 namespace net = boost::asio;
@@ -34,6 +37,10 @@ int main(int argc, const char* argv[]) {
         std::cerr << "Usage: game_server <game-config-json> <static-files>"sv << std::endl;
         return EXIT_FAILURE;
     }
+
+    #ifdef TESTS 
+        Tests::Tests();
+    #endif
 
     try {
         SetupLogging();

@@ -19,7 +19,7 @@ namespace router {
 
     using namespace http_handler;
 
-    using HandlerPtr = std::unique_ptr<HandlerBase>;
+    using HandlerPtr = std::shared_ptr<HandlerBase>;
     using ParamsSet = std::unordered_set<std::string>;
 
     class TrieNode {
@@ -43,7 +43,7 @@ namespace router {
 
         void AddRoute(const std::string& method, 
                       const std::string& path, 
-                      HandlerPtr&& handler, 
+                      HandlerPtr handler, 
                       bool intermediate = false);
         
         std::vector<HandlerPtr>* GetHandlers(const std::string& path/* , 
@@ -74,7 +74,7 @@ namespace router {
 
         void AddRoute(const std::vector<std::string>& methods, 
                       const std::string& path, 
-                      HandlerPtr&& handler, 
+                      HandlerPtr handler, 
                       bool intermediate = false);
 
         ResponseVariant Route(const StringRequest& req);
