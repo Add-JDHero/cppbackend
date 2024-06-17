@@ -11,9 +11,6 @@
 #include <boost/json.hpp>
 
 namespace logging = boost::log;
-namespace json = boost::json;
-namespace keywords = boost::log::keywords;
-namespace expr = boost::log::expressions;
 
 BOOST_LOG_ATTRIBUTE_KEYWORD(additional_data, "AdditionalData", boost::json::value)
 BOOST_LOG_ATTRIBUTE_KEYWORD(timestamp, "TimeStamp", boost::posix_time::ptime)

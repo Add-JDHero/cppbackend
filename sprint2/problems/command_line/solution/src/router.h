@@ -46,8 +46,7 @@ namespace router {
                       HandlerPtr handler, 
                       bool intermediate = false);
         
-        std::vector<HandlerPtr>* GetHandlers(const std::string& path/* , 
-                                             std::unordered_map<std::string, std::string>& params */);
+        std::vector<HandlerPtr>* GetHandlers(const std::string& path);
                                              
         std::vector<std::string> SplitPath(const std::string& path) const;
 
@@ -61,9 +60,7 @@ namespace router {
         std::string_view GetMethod() const;
 
         TrieNode* GetNode(TrieNode* node, const std::string& segment);
-        TrieNode* GetNextNode(TrieNode* node, 
-                              const std::string& segment /*, 
-                              std::unordered_map<std::string, std::string>& params */);
+        TrieNode* GetNextNode(TrieNode* node, const std::string& segment);
         TrieNode* AddSegmentNode(TrieNode* node, const std::string& segment);
 
     };
@@ -77,7 +74,7 @@ namespace router {
                       HandlerPtr handler, 
                       bool intermediate = false);
 
-        ResponseVariant Route(const StringRequest& req);
+        StringResponse Route(const StringRequest& req);
 
         std::vector<std::string> FindPath(const std::string& method, const std::string& path);
 

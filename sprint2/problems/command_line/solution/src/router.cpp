@@ -124,7 +124,7 @@ namespace router {
         path_to_allowed_methods_[path] = methods;
     }
 
-    http_handler::ResponseVariant Router::Route(const http_handler::StringRequest& req) {
+    http_handler::StringResponse Router::Route(const http_handler::StringRequest& req) {
         auto ver = req.version();
         auto keep = req.keep_alive();
         auto json_response = 
@@ -135,21 +135,14 @@ namespace router {
                                                                   keep_alive, content_type);
         };
 
-        // std::unordered_map<std::string, std::string> params;
         auto method = std::string(req.method_string());
         auto path = util::UrlDecode(std::string(req.target()));
 
         if (trie_.find(method) != trie_.end()) {
-            auto handlers = trie_[method]->GetHandlers(path/* , params */);
+            auto handlers = trie_[method]->GetHandlers(path);
             if (handlers) {
                 for (auto& handler : *handlers) {
-                    auto response = handler->Invoke(req, json_response);
-                    if (std::holds_alternative<http_handler::StringResponse>(response) || 
-                        std::holds_alternative<http_handler::FileResponse>(response)) {
-                        return std::visit([&req](auto&& arg) -> http_handler::ResponseVariant {
-                            return std::move(arg);
-                        }, std::move(response));
-                    }
+                    return handler->Invoke(req, json_response);
                 }
             } else {
                 return http_handler::ErrorHandler::

@@ -1,8 +1,10 @@
 #include "request_handler.h"
 
 // #include "boost/beast/core/string_type.hpp"
+#include "application.h"
 #include "handlers.h"
 #include "router.h"
+#include "util.h"
 #include <cstdint>
 #include <exception>
 #include <memory>
@@ -127,78 +129,96 @@ namespace http_handler {
         return response;
     }
 
-    RequestHandler::RequestHandler(model::Game& game, Strand api_strand, fs::path path)
-        : game_{game}
-        , router_(std::make_shared<router::Router>())
-        , api_strand_(api_strand)
-        , root_dir_(path) {
-            SetupEndPoits();
+    RequestHandler::RequestHandler(Strand& api_strand, fs::path path, app::Application& app)
+        : api_strand_(api_strand)
+        , root_dir_(path)
+        , app_(app) {
     }
 
-    void RequestHandler::SetupEndPoits() {
+
+
+    StringResponse ApiRequestHandler::RouteRequest(const StringRequest& req) {
+        return router_->Route(req);
+    }
+
+    void ApiRequestHandler::SetupEndPoits() {
         using JsonResponseHandler = 
             std::function<StringResponse(http::status, std::string, std::string_view)>;
 
+        using TokenHandler = 
+            std::function<std::optional<StringResponse>(const StringRequest&, JsonResponseHandler)>;
+
+        auto token_handler = std::make_shared<TokenHandler>(
+            [this](const StringRequest& req, JsonResponseHandler json_response) 
+            -> std::optional<StringResponse> {
+                if (auto optional = this->TokenHandler(req, json_response)) {
+                    return optional;
+                }
+
+                return std::nullopt;
+            }
+        );
+
+
         router_->AddRoute({"GET", "HEAD"}, "/api/v1/maps", 
             std::make_unique<HTTPResponseMaker>(
-            [this](const StringRequest& req, JsonResponseHandler json_response) -> ResponseVariant {
+            [this](const StringRequest& req, JsonResponseHandler json_response) -> StringResponse {
                 url::UrlParser parser(std::string(req.target()));
                 auto path_components = parser.GetComponents();
-                return this->api_handler_.GetMapsRequest(json_response);
+                return this->GetMapsRequest(json_response);
             }
         ));
 
         router_->AddRoute({"GET", "HEAD"}, "/api/v1/maps/:id", 
             std::make_unique<HTTPResponseMaker>(
-            [this](const StringRequest& req, JsonResponseHandler json_response) -> ResponseVariant {
+            [this](const StringRequest& req, JsonResponseHandler json_response) -> StringResponse {
                 url::UrlParser parser(std::string(req.target()));
                 auto map_id = parser.GetLastComponent();
-                return this->api_handler_.GetMapDetailsRequest(json_response, map_id);
+                return this->GetMapDetailsRequest(json_response, map_id);
             }
         ));
 
         router_->AddRoute({"POST"}, "/api/v1/game/join", 
             std::make_shared<HTTPResponseMaker>(
-            [this](const StringRequest& req, JsonResponseHandler json_response) -> ResponseVariant {
-                return api_handler_.JoinGame(req, json_response);
+            [this](const StringRequest& req, JsonResponseHandler json_response) -> StringResponse {
+                return this->JoinGame(req, json_response);
             }));
 
         router_->AddRoute({"GET", "HEAD"}, "/api/v1/game/players", 
             std::make_shared<HTTPResponseMaker>(
-            [this](const StringRequest& req, JsonResponseHandler json_response) -> ResponseVariant {
-                return api_handler_.GetPlayersRequest(req, json_response);
+            [this ](const StringRequest& req, JsonResponseHandler json_response) -> StringResponse {
+                /* return this->ExecuteAuthorized(GetPlayersRequest, 
+                                               req, json_response); */
+                
+                return this->GetPlayersRequest(req, json_response);
             }));
 
         router_->AddRoute({"GET", "HEAD"}, "/api/v1/game/state", 
             std::make_shared<HTTPResponseMaker>(
-            [this](const StringRequest& req, JsonResponseHandler json_response) -> ResponseVariant {
-                return api_handler_.GetGameState(req, json_response);
+            [this](const StringRequest& req, JsonResponseHandler json_response) -> StringResponse {
+                // return this->ExecuteAuthorized(this->GetGameState(req, json_response), req, json_response);
+
+                return this->GetGameState(req, json_response);
             }));
             
         router_->AddRoute({"POST"}, "/api/v1/game/player/action", 
             std::make_shared<HTTPResponseMaker>(
-            [this](const StringRequest& req, JsonResponseHandler json_response) -> ResponseVariant {
-                return api_handler_.MoveUnit(req, json_response);
+            [this](const StringRequest& req, JsonResponseHandler json_response) -> StringResponse {
+                /* return this->ExecuteAuthorized(this->MoveUnit(req, json_response), 
+                                               req, json_response); */
+
+                return this->MoveUnit(req, json_response);
             }));
 
         router_->AddRoute({"POST"}, "/api/v1/game/tick", 
             std::make_shared<HTTPResponseMaker>(
-            [this](const StringRequest& req, JsonResponseHandler json_response) -> ResponseVariant {
-                return api_handler_.TickRequest(req, json_response);
+            [this](const StringRequest& req, JsonResponseHandler json_response) -> StringResponse {
+                return this->TickRequest(req, json_response);
             }));
-
-        router_->AddRoute({"GET"}, ":", 
-            std::make_shared<HTTPResponseMaker>(
-            [this](const StringRequest& req, JsonResponseHandler json_response) -> ResponseVariant {
-                this->file_handler_.HandleRequest(req, json_response);
-
-                return {}; 
-            }
-        ));
     }
 
     StringResponse ApiRequestHandler::GetMapsRequest(const JsonResponseHandler& json_response) const {
-        std::string maps = json_loader::MapSerializer::SerializeMapsMainInfo(game_.GetMaps());
+        std::string maps = json_loader::MapSerializer::SerializeMapsMainInfo(app_.GetMaps());
 
         return json_response(http::status::ok, maps, ContentType::APP_JSON);
     }
@@ -206,7 +226,7 @@ namespace http_handler {
     StringResponse ApiRequestHandler::GetMapDetailsRequest(const JsonResponseHandler& json_response,
                                                            std::string_view map_id) const {
         const model::Map::Id id{std::string(map_id)};
-        auto map_ptr = game_.FindMap(id);
+        auto map_ptr = app_.FindMap(id);
         
         if (map_ptr) {
             auto map_json = json_loader::MapSerializer::SerializeSingleMap(*map_ptr);
@@ -254,7 +274,7 @@ namespace http_handler {
         
         std::string map_id = object.at("mapId").as_string().c_str();
         std::string user_name = object.at("userName").as_string().c_str();
-        auto session = game_.FindGameSession(model::Map::Id{map_id.data()});
+        auto session = app_.FindGameSession(model::Map::Id{map_id.data()});
         if (user_name.size() == 0) {
             return ErrorHandler::MakeBadRequestResponse(json_response, "invalidArgument", 
                                                         "Invalid name");
@@ -264,8 +284,8 @@ namespace http_handler {
         }
 
         std::shared_ptr<model::Dog> dog = std::make_shared<model::Dog>(user_name);
-        dog->SetDefaultDogSpeed(session->GetMapDefaultSpeed());
-        app::Token token = players_.Add(dog, session);
+
+        app::Token token = app_.AddPlayer(dog, session);
 
         json::value value = {
             { SpecialStrings::AUTH_TOKEN.data(), *token },
@@ -273,10 +293,8 @@ namespace http_handler {
         };
 
         std::string val = json::serialize(value);
-        auto result = json_response(http::status::ok, val, ContentType::APP_JSON.data());
-        result.set(http::field::cache_control, "no-cache");
         
-        return result;
+        return json_response(http::status::ok, std::move(val), ContentType::APP_JSON.data());
     }
 
     bool ApiRequestHandler::IsValidAuthToken(std::string& token) const {
@@ -284,18 +302,30 @@ namespace http_handler {
         return std::regex_match(token, token_pattern);
     }
 
-    std::string ExtractToken(std::string_view auth_header) {
-        std::string_view prefix = "Bearer "sv;
-        if (auth_header.starts_with(prefix)) {
-            auth_header.remove_prefix(prefix.size());
+    std::optional<StringResponse> 
+    ApiRequestHandler::TokenHandler(const StringRequest& req, JsonResponseHandler json_response) const {
+        std::string token = "";
+        try {
+            std::string auth_header = std::string(req.base().at(http::field::authorization));
+            token = util::ExtractToken(auth_header);
+        } catch (...) {
+            return ErrorHandler::MakeUnauthorizedResponse(json_response, "invalidToken", 
+                                                          "Authorization header is missing");
         }
 
-        return std::string(auth_header);
+        if (token.empty() || !IsValidAuthToken(token)) {
+            return ErrorHandler::MakeUnauthorizedResponse(json_response, "invalidToken", 
+                                                          "Authorization header is missing");
+        }
+
+        return std::nullopt;
+
     }
 
-    std::optional<StringResponse> ApiRequestHandler::TokenHandler(const StringRequest& req,
-                                                                  JsonResponseHandler json_response,
-                                                                  std::string& token) const {
+    std::optional<StringResponse> 
+    ApiRequestHandler::TokenHandler(const StringRequest& req, 
+                                    JsonResponseHandler json_response,
+                                    std::string& token) const {
         try {
             std::string auth_header = std::string(req.base().at(http::field::authorization));
             token = util::ExtractToken(auth_header);
@@ -330,13 +360,15 @@ namespace http_handler {
 
     StringResponse ApiRequestHandler::GetPlayersRequest(const StringRequest& req, 
                                                         JsonResponseHandler json_response) const {
+        
+        /* // проверка того, что токен есть и он валидный, выполняется с в другом месте 
+        std::string token = util::ExtractToken(std::string(req.base().at(http::field::authorization))); */
         std::string token;
         if (auto optional = TokenHandler(req, json_response, token)) {
             return optional.value();
         }
-
-        auto player = players_.GetPlayerByToken(app::Token{token});
-        if (player == nullptr) {
+        
+        if (!app_.HasPlayerToken(app::Token{token})) {
             return ErrorHandler::MakeUnauthorizedResponse(json_response, "unknownToken", 
                                                           "Player token has not been found");
         }
@@ -380,29 +412,30 @@ namespace http_handler {
 
     StringResponse ApiRequestHandler::MoveUnit(const StringRequest& req, 
                                               JsonResponseHandler json_response) {
+        /* // проверка того, что токен есть и он валидный, выполняется с в другом месте 
+        std::string token = util::ExtractToken(std::string(req.base().at(http::field::authorization))); */
         std::string token;
         if (auto optional = TokenHandler(req, json_response, token)) {
             return optional.value();
         }
 
-        auto player = players_.GetPlayerByToken(app::Token{token});
-        if (player == nullptr) {
+        if (!app_.HasPlayerToken(app::Token{token})) {
             return ErrorHandler::MakeUnauthorizedResponse(json_response, "unknownToken", 
                                                           "Player token has not been found");
         }
 
-        if (auto optional = ParseContentType(req, json_response)) {
-            return optional.value();
+        if (auto optional_parse_error = ParseContentType(req, json_response)) {
+            return optional_parse_error.value();
         }
         
         std::string direction = "";
-        if (auto optional = ParseMoveJson(json_response, req.body().data(), direction)) {
-            return optional.value();
+        if (auto optional_parse_error = ParseMoveJson(json_response, req.body().data(), direction)) {
+            return optional_parse_error.value();
         } // modify direction value if Move Json was valid!
 
         app_.MovePlayer(app::Token{token}, direction);
 
-       std::string response_body = "{}";
+        std::string response_body = "{}";
         return json_response(http::status::ok, response_body, ContentType::APP_JSON);
     }
 
@@ -413,14 +446,13 @@ namespace http_handler {
             return optional.value();
         }
 
-        auto player = players_.GetPlayerByToken(app::Token{token});
-        if (player == nullptr) {
+        if (!app_.HasPlayerToken(app::Token{token})) {
             return ErrorHandler::MakeUnauthorizedResponse(json_response, "unknownToken", 
                                                           "Player token has not been found");
         }
 
         auto response_body = app_.GetSerializedGameState(app::Token{token});
-        return json_response(http::status::ok, response_body, ContentType::APP_JSON);
+        return json_response(http::status::ok, std::move(response_body), ContentType::APP_JSON);
     }
 
     bool IsDigit(char c) {
@@ -460,6 +492,12 @@ namespace http_handler {
 
     StringResponse ApiRequestHandler::TickRequest(const StringRequest& req, 
                                                   JsonResponseHandler json_response) const {
+
+        if (!app_.IsManualTicker()) {
+            return ErrorHandler::MakeBadRequestResponse(json_response, "badRequest",
+                                                        "Invalid endpoint");
+        }
+
         if (auto optional = ParseContentType(req, json_response)) {
             return optional.value();
         }
@@ -516,14 +554,14 @@ namespace http_handler {
         return ErrorHandler::MakeBadRequestResponse(json_response);
     }
 
-    FileRequestHandler::FileRequestHandler(model::Game& game, fs::path path) 
-        : game_(game), root_dir_(path) {
+    FileRequestHandler::FileRequestHandler(fs::path path) 
+        : root_dir_(path) {
     }
 
-    ApiRequestHandler::ApiRequestHandler(model::Game& game, fs::path path, app::Players& players, 
-                                         std::shared_ptr<router::Router> router) 
-        : game_(game), root_dir_(path)
-        , players_(players), router_(router){
+    ApiRequestHandler::ApiRequestHandler(app::Application& app) 
+        : app_(app)
+        , router_(std::make_unique<router::Router>()) {
+            SetupEndPoits();
     }
 
 }  // namespace http_handler

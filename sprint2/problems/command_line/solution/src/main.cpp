@@ -1,10 +1,12 @@
 #include "sdk.h"
+#include "application.h"
 
 #include <boost/asio/io_context.hpp>
 #include <iostream>
 #include <thread>
 #include <boost/asio/signal_set.hpp>
 
+#include "command_line_parser.h"
 #include "util_tests.h"
 #include "json_loader.h"
 #include "log.h"
@@ -34,9 +36,18 @@ void RunWorkers(unsigned n, const Fn& fn) {
 }  // namespace
 
 int main(int argc, const char* argv[]) {
-    if (argc != 3) {
-        std::cerr << "Usage: game_server <game-config-json> <static-files>"sv << std::endl;
-        return EXIT_FAILURE;
+
+    Args arg;
+
+    try {
+        if (auto args = ParseCommandLine(argc, argv)) {
+            arg = *args;
+            } else {
+            return EXIT_FAILURE;
+            }
+        } catch (const std::exception& e) {
+            std::cout << "Parse arguments failure. " << e.what() << std::endl;
+            return EXIT_FAILURE;
     }
 
     #ifdef TESTS 
@@ -45,9 +56,6 @@ int main(int argc, const char* argv[]) {
 
     try {
         SetupLogging();
-
-        // 1. Загружаем карту из файла и построить модель игры
-        model::Game game = json_loader::LoadGame(argv[1]);
 
         // 2. Инициализируем io_context
         const unsigned num_threads = std::thread::hardware_concurrency();
@@ -63,8 +71,12 @@ int main(int argc, const char* argv[]) {
             }
         });
 
+        // model::Game game = json_loader::LoadGame(arg.config);
+        app::Application app(arg.config);
+        // app::Application app(game);
+
         // 4. Создаём обработчик HTTP-запросов и связываем его с моделью игры
-        auto handler = std::make_shared<http_handler::RequestHandler>(game, strand, argv[2]);
+        auto handler = std::make_shared<http_handler::RequestHandler>(strand, arg.www_root, app);
         http_handler::LoggingRequestHandler logging_handler(handler);
 
         // 5. Запустить обработчик HTTP-запросов, делегируя их обработчику запросов
@@ -77,24 +89,19 @@ int main(int argc, const char* argv[]) {
         // Cообщает тестам о том, что сервер запущен и готов обрабатывать запросы
         ServerStartLog(port, address);
 
-        auto ticker = std::make_shared<game_time::Ticker>(strand, 10ms,
-            [&game](std::chrono::milliseconds delta) { game.Tick(double(delta.count()) / double(1000)); }
-        );
-        ticker->Start();
+        if (arg.period) {
+            app.SetManualTicker(false);
+            auto ticker = std::make_shared<game_time::Ticker>(strand, 10ms,
+                [&app](std::chrono::milliseconds delta) { app.Tick(double(delta.count()) / double(1000)); }
+            );
+
+            ticker->Start();
+        }
 
         // 6. Запускаем обработку асинхронных операций
         RunWorkers(std::max(1u, num_threads), [&ioc] {
             ioc.run(); 
         });
-
-        /* if (!game.IsDebug())
-        { */
-            // Настраиваем вызов метода Tick каждые 50 миллисекунд внутри strand
-            /* auto ticker = std::make_shared<game_time::Ticker>(strand, 50ms,
-                [&game](std::chrono::milliseconds delta) { game.Tick((double(delta.count())) / 1000); }
-            );
-            ticker->Start(); */
-        /* } */
 
     } catch (const std::exception& ex) {
         ServerStopLog(EXIT_FAILURE, ex.what());

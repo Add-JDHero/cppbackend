@@ -2,6 +2,7 @@
 
 #include "sdk.h"
 
+#include "application.h"
 #include "util.h"
 #include "model.h"
 #include "http_server.h"
@@ -10,7 +11,6 @@
 #include "log.h"
 #include "router.h"
 #include "handlers.h"
-#include "player.h"
 
 #include <boost/json/serialize.hpp>
 #include <memory>
@@ -28,6 +28,7 @@ namespace http = beast::http;
 namespace net = boost::asio;
 namespace json = boost::json;
 namespace fs = std::filesystem;
+
 
 namespace http_handler {
     namespace separating_chars {
@@ -98,8 +99,9 @@ namespace http_handler {
 
     class ApiRequestHandler {
     public:
-        ApiRequestHandler(model::Game& game, fs::path path, 
-                          app::Players& players, std::shared_ptr<router::Router> router);
+        ApiRequestHandler(app::Application& app);
+
+        StringResponse RouteRequest(const StringRequest& req);
 
         StringResponse JoinGame(const StringRequest& req,
                                 const JsonResponseHandler& json_response);
@@ -119,46 +121,55 @@ namespace http_handler {
 
     private:
 
+        template <typename Fn>
+        StringResponse ExecuteAuthorized(Fn&& action, const StringRequest& req,
+                                         JsonResponseHandler json_response);
+
         bool IsValidAuthToken(std::string& auth_header) const;
 
-        std::optional<StringResponse> TokenHandler(const StringRequest& req,
-                                                   JsonResponseHandler json_response,
-                                                   std::string& token) const;
+        std::optional<StringResponse> 
+        TokenHandler(const StringRequest& req, JsonResponseHandler json_response) const;
+        
+        std::optional<StringResponse> 
+        TokenHandler(const StringRequest& req, 
+                    JsonResponseHandler json_response,
+                    std::string& token) const;
 
-        std::optional<StringResponse> IsAllowedMethod(const StringRequest& req, 
-                                                      JsonResponseHandler json_response,
-                                                      std::string message = {}) const;
+        std::optional<StringResponse> 
+        IsAllowedMethod(const StringRequest& req, JsonResponseHandler json_response,
+                        std::string message = {}) const;
 
-        std::optional<StringResponse> ParseJoinRequest(const StringRequest& req, 
-                                                       JsonResponseHandler json_response,
-                                                       json::object& obj) const;
+        std::optional<StringResponse> 
+        ParseJoinRequest(const StringRequest& req, JsonResponseHandler json_response,
+                         json::object& obj) const;
 
-        std::optional<StringResponse> ParseMoveJson(JsonResponseHandler json_response, 
-                                                    std::string data,
-                                                    std::string& direction) const;
-        std::optional<StringResponse> ParseTickJson(JsonResponseHandler json_response, 
-                                                    std::string data,
-                                                    uint64_t& milliseconds) const;
-        std::optional<StringResponse> ParseContentType(const StringRequest& req,
-                                                   JsonResponseHandler json_response) const;
+        std::optional<StringResponse> 
+        ParseContentType(const StringRequest& req, JsonResponseHandler json_response) const;
 
-        model::Game& game_;
+        std::optional<StringResponse> 
+        ParseMoveJson(JsonResponseHandler json_response, std::string data,
+                      std::string& direction) const;
+
+        std::optional<StringResponse> 
+        ParseTickJson(JsonResponseHandler json_response, std::string data,
+                      uint64_t& milliseconds) const;
+
+        void SetupEndPoits();
+
         fs::path root_dir_;
-        app::Players& players_;
-        app::Application app_{game_, players_};
+        app::Application& app_;
 
-        std::shared_ptr<router::Router> router_;
+        std::unique_ptr<router::Router> router_;
     };
 
     class FileRequestHandler {
     public:
-        FileRequestHandler(model::Game& game, fs::path path);
+        FileRequestHandler(fs::path path);
 
         ResponseVariant HandleRequest(const StringRequest& request, 
                                       const JsonResponseHandler& json_response);
 
     private:
-        model::Game& game_;
         fs::path root_dir_;
     };
 
@@ -166,7 +177,7 @@ namespace http_handler {
     public:
         using Strand = net::strand<net::io_context::executor_type>;
 
-        RequestHandler(model::Game& game, Strand api_strand, fs::path path);
+        RequestHandler(Strand& api_strand, fs::path path, app::Application& app);
 
         RequestHandler(const RequestHandler&) = delete;
         RequestHandler& operator=(const RequestHandler&) = delete;
@@ -176,21 +187,20 @@ namespace http_handler {
 
         template <typename Body, typename Allocator, typename Send>
         void operator()(http::request<Body, http::basic_fields<Allocator>>&& req, Send&& send);
-    private:
-        model::Game& game_;
-        fs::path root_dir_;
-        app::Players players_;
-        std::shared_ptr<router::Router> router_;
 
-        FileRequestHandler file_handler_{game_, root_dir_};
-        ApiRequestHandler api_handler_{game_, root_dir_, players_, router_};
-        Strand api_strand_;
+    private:
+        fs::path root_dir_;
+
+        app::Application& app_;
+        FileRequestHandler file_handler_{root_dir_};
+        ApiRequestHandler api_handler_{app_};
+        Strand& api_strand_;
 
         void SetupEndPoits();
 
-        std::optional<StringResponse> ParseJoinRequest(const StringRequest& req, 
-                                                       JsonResponseHandler json_response,
-                                                       json::object& obj) const;
+        std::optional<StringResponse> 
+        ParseJoinRequest(const StringRequest& req, JsonResponseHandler json_response,
+                         json::object& obj) const;
 
         EmptyResponse CopyResponseWithoutBody(const ResponseVariant& response) const;
     };
@@ -204,6 +214,7 @@ namespace http_handler {
 
         template <typename Body, typename Allocator, typename Send>
         void operator()(http::request<Body, http::basic_fields<Allocator>>&& req, Send&& send);
+
     private:
         std::shared_ptr<SomeRequestHandler> request_handler_;
 
@@ -319,15 +330,20 @@ namespace http_handler {
                     // Этот assert не выстрелит, так как лямбда-функция будет выполняться 
                     // внутри strand
                     assert(self->api_strand_.running_in_this_thread());
-                    ResponseVariant result = self->router_->Route(req);
+
+                    ResponseVariant result = self->api_handler_.RouteRequest(req);
                     std::visit([&send](auto&& res){
                         res.set(http::field::cache_control, "no-cache");
                     }, result);
-                    req.method_string() == 
-                        "HEAD" ? result = self->CopyResponseWithoutBody(result) : result;
+
+                    req.method_string() == "HEAD" 
+                        ? result = self->CopyResponseWithoutBody(result) 
+                        : result;
+
                     return send(std::forward<decltype(result)>(result));
                 } catch (...) {
                     // ServerErrorLog(version, keep_alive));
+                    
                 }
             };
 
@@ -337,5 +353,16 @@ namespace http_handler {
         std::visit([&send](auto&& result){
             send(std::forward<decltype(result)>(result));
         }, file_handler_.HandleRequest(req, json_response));
+    }
+
+    template <typename Fn>
+    StringResponse ApiRequestHandler::ExecuteAuthorized(Fn&& action, const StringRequest& req,
+                                                        JsonResponseHandler json_response) {
+        auto optional = TokenHandler(req, json_response);
+        if (!optional.has_value()) {
+            return action(req, json_response);
+        } else {
+            return optional.value();
+        }
     }
 }
