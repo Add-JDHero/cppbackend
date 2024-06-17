@@ -19,4 +19,7 @@ namespace http_handler {
 
     using FileResponse = http::response<http::file_body>;
     using ResponseVariant = std::variant<EmptyResponse, StringResponse, FileResponse>;
+
+    using JsonResponseHandler = 
+            std::function<StringResponse(http::status, std::string, std::string_view)>;
 }

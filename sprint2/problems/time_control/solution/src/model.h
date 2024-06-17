@@ -40,8 +40,6 @@ namespace model {
         double x, y;
     };
 
-    class Dog;
-
     struct State {
         using Id = uint64_t;
 
@@ -73,31 +71,17 @@ namespace model {
         constexpr static HorizontalTag HORIZONTAL{};
         constexpr static VerticalTag VERTICAL{};
 
-        Road(HorizontalTag, Point start, Coord end_x) noexcept
-            : start_{start}
-            , end_{end_x, start.y} {
-        }
+        Road(HorizontalTag, Point start, Coord end_x) noexcept;
 
-        Road(VerticalTag, Point start, Coord end_y) noexcept
-            : start_{start}
-            , end_{start.x, end_y} {
-        }
+        Road(VerticalTag, Point start, Coord end_y) noexcept;
 
-        bool IsHorizontal() const noexcept {
-            return start_.y == end_.y;
-        }
+        bool IsHorizontal() const noexcept;
 
-        bool IsVertical() const noexcept {
-            return start_.x == end_.x;
-        }
+        bool IsVertical() const noexcept;
 
-        Point GetStart() const noexcept {
-            return start_;
-        }
+        Point GetStart() const noexcept;
 
-        Point GetEnd() const noexcept {
-            return end_;
-        }
+        Point GetEnd() const noexcept;
 
     private:
         Point start_;
@@ -153,51 +137,22 @@ namespace model {
         using Buildings = std::vector<Building>;
         using Offices = std::vector<Office>;
 
-        Map(Id id, std::string name) noexcept
-            : id_(std::move(id))
-            , name_(std::move(name)) {
-        }
+        Map(Id id, std::string name) noexcept;
 
-        const Id& GetId() const noexcept {
-            return id_;
-        }
+        void SetDefaultDogSpeed(int64_t default_speed);
 
-        void SetDefaultDogSpeed(int64_t default_speed) {
-            default_dog_speed_ = default_speed; 
-        }
-        
-        double GetDefaultDogSpeed() const {
-            return default_dog_speed_;
-        }
+        double GetDefaultDogSpeed() const;
 
-        bool IsDefaultDogSpeedValueConfigured() const {
-            return default_dog_speed_ != 1;
-        }
+        const Id& GetId() const noexcept;
+        const std::string& GetName() const noexcept;
+        const Buildings& GetBuildings() const noexcept;
+        const Roads& GetRoads() const noexcept;
+        const Offices& GetOffices() const noexcept;
 
-        const std::string& GetName() const noexcept {
-            return name_;
-        }
+        bool IsDefaultDogSpeedValueConfigured() const;
 
-        const Buildings& GetBuildings() const noexcept {
-            return buildings_;
-        }
-
-        const Roads& GetRoads() const noexcept {
-            return roads_;
-        }
-
-        const Offices& GetOffices() const noexcept {
-            return offices_;
-        }
-
-        void AddRoad(const Road& road) {
-            roads_.emplace_back(road);
-        }
-
-        void AddBuilding(const Building& building) {
-            buildings_.emplace_back(building);
-        }
-
+        void AddRoad(const Road& road);
+        void AddBuilding(const Building& building);
         void AddOffice(Office office);
 
     private:
@@ -218,66 +173,23 @@ namespace model {
     public:
         using Id = uint64_t;
 
-        Dog(std::string_view name) : name_(std::string(name)) {
-            state_.id = general_id_++;
-        };
+        Dog(std::string_view name);
 
-        const Id GetId() const {
-            return state_.id;
-        }
-        const std::string& GetName() const {
-            return name_;
-        }
+        const Id GetId() const;
+        const std::string& GetName() const;
+        const Pos& GetPosition() const noexcept;
+        const Speed& GetSpeed() const noexcept;
+        const Direction& GetDirection() const noexcept;
+        const State& GetState() const noexcept;
 
-         const Pos& GetPosition() const noexcept {
-            return state_.position;
-        }
 
-        const Speed& GetSpeed() const noexcept {
-            return state_.speed;
-        }
+        void SetDefaultDogSpeed(double speed);
+        void SetSpeed(double x, double y);
+        void SetDogDirSpeed(std::string dir);
 
-        const Direction& GetDirection() const noexcept {
-            return state_.direction;
-        }
+        void StopDog();
 
-        Pos MoveDog(Pos new_position) {
-            state_.position = new_position;
-            return state_.position;
-        }
-
-        void SetDefaultDogSpeed(double speed) {
-            default_dog_speed_ = speed;
-        }
-
-        void StopDog() {
-            state_.speed = {0, 0};
-        }
-
-        void SetDogSpeed(std::string dir) {
-            if (dir == "") {
-                state_.speed = {0, 0};
-            } else if (dir == "L") {
-                state_.speed = {-default_dog_speed_, 0};
-                state_.direction = Direction::WEST;
-            } else if (dir == "R") {
-                state_.speed = {default_dog_speed_, 0};
-                state_.direction = Direction::EAST;
-            } else if (dir == "U") {
-                state_.speed = {0, -default_dog_speed_};
-                state_.direction = Direction::NORTH;
-            } else if (dir == "D") {
-                state_.speed = {0, default_dog_speed_};
-                state_.direction = Direction::SOUTH;
-            }
-
-            return;
-            
-        }
-
-        const State& GetState() const noexcept {
-            return state_;
-        }
+        Pos MoveDog(Pos new_position);
 
     private:
 
@@ -296,130 +208,56 @@ namespace model {
         // using DogIdHasher = util::TaggedHasher<Id>;
         using Dogs = std::unordered_map<Dog::Id, std::shared_ptr<Dog>/*, DogIdHasher */>;
     public:
-        GameSession(const Map& map) : map_(map), id_(++(general_id_)){}
+        GameSession(const Map& map);
 
-        Map::Id GetMapId() const {
-            return map_.GetId();
-        }
+        Map::Id GetMapId() const;
+        double GetMapDefaultSpeed() const;
+        const Dogs& GetDogs() const;
+        const std::vector<std::string> GetPlayersNames() const;
+        const std::vector<State> GetPlayersUnitStates() const;
+        Id GetSessionId() const;
 
-        double GetMapDefaultSpeed() const {
-            return map_.GetDefaultDogSpeed();
-        }
+        void AddDog(std::shared_ptr<Dog> dog);
 
-        Id GetSessionId() const {
-            return general_id_;
-        }
+        bool HasDog(Dog::Id id);
 
-        void AddDog(std::shared_ptr<Dog> dog) {
-            dogs_.insert({dog->GetId(), dog});
-        }
+        void MovePlayer(Dog::Id id, double delta_time);
 
-        const Dogs& GetDogs() const {
-            return dogs_;
-        }
+        void StopPlayer(Dog::Id id);
 
-        const std::vector<std::string> GetPlayersNames() const {
-            std::vector<std::string> names;
-            for (const auto& [dog_id, dog]: dogs_) {
-                names.push_back(dog->GetName());
-            }
-
-            return names;
-        }
-
-        const std::vector<State> GetPlayersUnitStates() const {
-            std::vector<State> dogs;
-            for (const auto& [dog_id, dog]: dogs_) {
-                dogs.push_back(dog->GetState());
-            }
-
-            return dogs;
-        }
-
-        bool HasDog(Dog::Id id) {
-            return dogs_.count(id) > 0;
-        }
-
-        void MovePlayer(Dog::Id id, double delta_time) {
-            auto& dog = dogs_[id];
-            auto new_position = CalculateNewPosition(dog->GetPosition(), dog->GetSpeed(), delta_time);
-            auto adjusted_position = AdjustPositionToRoads(new_position, map_);
-
-            if (adjusted_position != new_position) {
-                dog->StopDog();
-            }
-
-            dog->MoveDog(adjusted_position);
-        }
-
-        void StopPlayer(Dog::Id id) {
-            dogs_[id]->StopDog();
-        }
-
-        void Tick(double delta_time) {
-            for (const auto& [dog_id, dog]: dogs_) {
-                MovePlayer(dog_id, delta_time);
-            }
-        }
+        void Tick(double delta_time);
     
     private:
 
-        Pos CalculateNewPosition(const Pos& position, const Speed& speed, double delta_time) {
-            return {position.x + speed.x * delta_time, position.y + speed.y * delta_time};
-        }
+        Pos CalculateNewPosition(const Pos& position, const Speed& speed, double delta_time);
 
-        bool IsWithinHorizontalRoad(const Pos& position, const Road& road) {
-            return position.y >= road.GetStart().y * 1.0 - 0.4 && position.y <= road.GetStart().y + 0.4;
-        }
+        struct Region {
+            double min_x, max_x, min_y, max_y;
 
-        bool IsWithinVerticalRoad(const Pos& position, const Road& road) {
-            return position.x >= road.GetStart().x * 1.0 - 0.4 && position.x <= road.GetStart().x * 1.0 + 0.4;
-        }
-
-        Pos AdjustHorizontalRoadBoundary(const Pos& position, const Road& road) {
-            if (position.x < road.GetStart().x * 1.0) {
-                return {road.GetStart().x * 1.0, position.y};
-            } else if (position.x > road.GetEnd().x * 1.0) {
-                return {road.GetEnd().x * 1.0, position.y};
+            bool Contains(const Pos& pos) const {
+                return pos.x >= min_x && pos.x <= max_x && pos.y >= min_y && pos.y <= max_y;
             }
-            return position;
-        }
+        };
 
-        Pos AdjustVerticalRoadBoundary(const Pos& position, const Road& road) {
-            if (position.y < road.GetStart().y * 1.0) {
-                return {position.x, road.GetStart().y * 1.0};
-            } else if (position.y > road.GetEnd().y * 1.0) {
-                return {position.x, road.GetEnd().y * 1.0};
-            }
-            return position;
-        }
+        // Добавление дорог в регионы
+        void AddRoadToRegions(const Road& road, std::unordered_map<int, Region>& regions);
 
-        Pos AdjustPositionForRoad(const Pos& position, const Road& road) {
-            Pos adjusted_position = position;
-            if (road.IsHorizontal() && IsWithinHorizontalRoad(position, road)) {
-                adjusted_position = AdjustHorizontalRoadBoundary(adjusted_position, road);
-                if (IsWithinVerticalRoad(adjusted_position, road)) {
-                    adjusted_position = AdjustVerticalRoadBoundary(adjusted_position, road);
-                }
-            } else if (road.IsVertical() && IsWithinVerticalRoad(position, road)) {
-                adjusted_position = AdjustVerticalRoadBoundary(adjusted_position, road);
-                if (IsWithinHorizontalRoad(adjusted_position, road)) {
-                    adjusted_position = AdjustHorizontalRoadBoundary(adjusted_position, road);
-                }
-            }
-            return adjusted_position;
-        }
 
-        Pos AdjustPositionToRoads(const Pos& position, const Map& map) {
-            Pos adjusted_position = position;
-            for (const auto& road : map.GetRoads()) {
-                adjusted_position = AdjustPositionForRoad(adjusted_position, road);
-            }
-            return adjusted_position;
-        }
+        // Инициализация регионов
+        void InitializeRegions(const Map& map, std::unordered_map<int, Region>& regions);
+
+        // Проверка, находится ли позиция в любой области
+        bool IsWithinAnyRegion(const Pos& pos, const std::unordered_map<int, Region>& regions);
+
+        // Корректировка позиции в рамках региона
+        Pos AdjustPositionToRegion(const Pos& position, const Region& region);
+
 
         Dogs dogs_;
         const Map& map_;
+        // RoadManager road_manager_;
+        std::vector<std::shared_ptr<Dog>> dogs_vector_;
+        std::unordered_map<int, Region> regions_;
 
         Id id_;
 
@@ -433,76 +271,24 @@ namespace model {
 
         void AddMap(Map map);
 
-        const Maps& GetMaps() const noexcept {
-            return maps_;
-        }
+        const Maps& GetMaps() const noexcept;
+        double GetDefaultDogSpeed() const;
 
-        void SetDefaultDogSpeed(double default_speed) {
-            default_dog_speed_ = default_speed; 
-        }
+        void SetDefaultDogSpeed(double default_speed);
 
-        double GetDefaultDogSpeed() const {
-            return default_dog_speed_;
-        }
+        std::shared_ptr<GameSession> FindGameSession(Map::Id map_id);
 
-        std::shared_ptr<GameSession> FindGameSession(Map::Id map_id) {
-            if (!FindMap(map_id)) { return nullptr;}
+        std::shared_ptr<GameSession> CreateGameSession(Map::Id map_id);
 
-            if (map_id_to_session_index_.count(map_id)) {
-                return FindGameSessionBySessionId(map_id_to_session_index_[map_id]);
-            }
+        void Tick(double delta_time);
 
-            return CreateGameSession(map_id);
-        }
-
-        std::shared_ptr<GameSession> CreateGameSession(Map::Id map_id) {
-            auto result = std::make_shared<GameSession>(maps_[map_id_to_index_[map_id]]);
-            int index = sessions_.size();
-            sessions_.push_back(result);
-            game_sessions_id_to_index_[result->GetSessionId()] = index;
-            map_id_to_session_index_[map_id] = result->GetSessionId();
-
-            return result;
-        }
-
-        void Tick(double delta_time) {
-            for (const auto& session: sessions_) {
-                session->Tick(delta_time);
-            }
-        }
-
-        /* 
-        std::shared_ptr<GameSession> ConnectToSession(Map::Id map_id, std::string& user_name) {
-            std::shared_ptr<GameSession> result = FindGameSession(map_id);
-
-            if (result == nullptr) {
-                result = CreateGameSession(map_id);
-            }
-
-
-
-            return result;
-        } */
-
-        const Map* FindMap(const Map::Id& id) const noexcept {
-            if (auto it = map_id_to_index_.find(id); it != map_id_to_index_.end()) {
-                return &maps_.at(it->second);
-            }
-            
-            return nullptr;
-        }
+        const Map* FindMap(const Map::Id& id) const noexcept;
 
     private:
 
         double default_dog_speed_ = 1.0;
 
-        std::shared_ptr<GameSession> FindGameSessionBySessionId(GameSession::Id session_id) {
-            if (game_sessions_id_to_index_.count(session_id)) {
-                return sessions_[game_sessions_id_to_index_[session_id]];
-            }
-
-            return nullptr;
-        }
+        std::shared_ptr<GameSession> FindGameSessionBySessionId(GameSession::Id session_id);
 
         using MapIdHasher = util::TaggedHasher<Map::Id>;
         using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;

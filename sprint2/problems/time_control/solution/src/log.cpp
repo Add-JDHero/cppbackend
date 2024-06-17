@@ -1,5 +1,7 @@
 #include "log.h"
 
+namespace keywords = boost::log::keywords;
+namespace expr = boost::log::expressions;
 
 void SetupLogging() {
     logging::add_common_attributes();

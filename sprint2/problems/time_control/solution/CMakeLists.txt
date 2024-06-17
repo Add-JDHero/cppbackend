@@ -17,8 +17,8 @@ add_executable(game_server
   src/sdk.h
   src/model.h
   src/model.cpp
-  src/player.h
-  src/player.cpp
+  src/application.h
+  src/application.cpp
   src/tagged.h
   src/boost_json.cpp
   src/json_loader.h
@@ -38,6 +38,9 @@ add_executable(game_server
   src/handlers.cpp
   src/util_tests.h
   src/util_tests.cpp
+  src/ticker.h
+  src/ticker.cpp
+  src/command_line_parser.h
 )
 
 target_link_libraries(game_server CONAN_PKG::boost) 

@@ -1,4 +1,5 @@
 #include "sdk.h"
+#include "application.h"
 
 #include <boost/asio/io_context.hpp>
 #include <iostream>
@@ -9,6 +10,7 @@
 #include "json_loader.h"
 #include "log.h"
 #include "request_handler.h"
+#include "ticker.h"
 
 // #define TESTS
 
@@ -62,8 +64,10 @@ int main(int argc, const char* argv[]) {
             }
         });
 
+        app::Application app(game);
+
         // 4. Создаём обработчик HTTP-запросов и связываем его с моделью игры
-        auto handler = std::make_shared<http_handler::RequestHandler>(game, strand, argv[2]);
+        auto handler = std::make_shared<http_handler::RequestHandler>(game, strand, argv[2], app);
         http_handler::LoggingRequestHandler logging_handler(handler);
 
         // 5. Запустить обработчик HTTP-запросов, делегируя их обработчику запросов
@@ -76,10 +80,25 @@ int main(int argc, const char* argv[]) {
         // Cообщает тестам о том, что сервер запущен и готов обрабатывать запросы
         ServerStartLog(port, address);
 
+        /* auto ticker = std::make_shared<game_time::Ticker>(strand, 10ms,
+            [&game](std::chrono::milliseconds delta) { game.Tick(double(delta.count()) / double(1000)); }
+        );
+        ticker->Start(); */
+
         // 6. Запускаем обработку асинхронных операций
         RunWorkers(std::max(1u, num_threads), [&ioc] {
             ioc.run(); 
         });
+
+        /* if (!game.IsDebug())
+        { */
+            // Настраиваем вызов метода Tick каждые 50 миллисекунд внутри strand
+            /* auto ticker = std::make_shared<game_time::Ticker>(strand, 50ms,
+                [&game](std::chrono::milliseconds delta) { game.Tick((double(delta.count())) / 1000); }
+            );
+            ticker->Start(); */
+        /* } */
+
     } catch (const std::exception& ex) {
         ServerStopLog(EXIT_FAILURE, ex.what());
 
