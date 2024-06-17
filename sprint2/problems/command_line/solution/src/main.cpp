@@ -1,4 +1,6 @@
 #include "sdk.h"
+#include "application.h"
+#include "command_line_parser.h"
 
 #include <boost/asio/io_context.hpp>
 #include <iostream>
@@ -34,10 +36,6 @@ void RunWorkers(unsigned n, const Fn& fn) {
 }  // namespace
 
 int main(int argc, const char* argv[]) {
-    if (argc != 3) {
-        std::cerr << "Usage: game_server <game-config-json> <static-files>"sv << std::endl;
-        return EXIT_FAILURE;
-    }
 
     #ifdef TESTS 
         Tests::Tests();
@@ -46,8 +44,21 @@ int main(int argc, const char* argv[]) {
     try {
         SetupLogging();
 
+        Args arg;
+
+        try {
+            if (auto args = ParseCommandLine(argc, argv)) {
+                arg = *args;
+                } else {
+                return EXIT_FAILURE;
+                }
+            } catch (const std::exception& e) {
+                std::cout << "Parse arguments failure. " << e.what() << std::endl;
+                return EXIT_FAILURE;
+        }
+
         // 1. Загружаем карту из файла и построить модель игры
-        model::Game game = json_loader::LoadGame(argv[1]);
+        model::Game game = json_loader::LoadGame(arg.config);
 
         // 2. Инициализируем io_context
         const unsigned num_threads = std::thread::hardware_concurrency();
@@ -63,8 +74,10 @@ int main(int argc, const char* argv[]) {
             }
         });
 
+        app::Application app(game);
+
         // 4. Создаём обработчик HTTP-запросов и связываем его с моделью игры
-        auto handler = std::make_shared<http_handler::RequestHandler>(game, strand, argv[2]);
+        auto handler = std::make_shared<http_handler::RequestHandler>(game, strand, arg.www_root, app);
         http_handler::LoggingRequestHandler logging_handler(handler);
 
         // 5. Запустить обработчик HTTP-запросов, делегируя их обработчику запросов

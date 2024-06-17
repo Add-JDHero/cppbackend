@@ -18,17 +18,17 @@ using JsonResponseHandler =
 class HandlerBase {
 public:
     virtual ~HandlerBase() = default;
-    virtual http_handler::ResponseVariant Invoke(const http_handler::StringRequest& req, 
+    virtual http_handler::StringResponse Invoke(const http_handler::StringRequest& req, 
                                                  JsonResponseHandler json_response) = 0;
 };
 
 class HTTPResponseMaker : public HandlerBase {
-    using ResponseMaker = http_handler::ResponseVariant(const http_handler::StringRequest&, 
+    using ResponseMaker = http_handler::StringResponse(const http_handler::StringRequest&, 
                                                         JsonResponseHandler);
 public:
     HTTPResponseMaker(std::function<ResponseMaker> handler);
 
-    http_handler::ResponseVariant Invoke(const http_handler::StringRequest& req, 
+    http_handler::StringResponse Invoke(const http_handler::StringRequest& req, 
                                                  JsonResponseHandler json_response) override;
 
 private:
