@@ -35,6 +35,10 @@ void RunWorkers(unsigned n, const Fn& fn) {
 
 }  // namespace
 
+    // ==================================================================
+    // TODO: перенести game в Application (ломается перемещение собаки!) 
+    // ==================================================================
+
 int main(int argc, const char* argv[]) {
 
     #ifdef TESTS 
