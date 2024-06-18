@@ -236,6 +236,12 @@ namespace json_loader {
         return json::serialize(result);
     }
 
+    double format_number(double value, int precision = 9) {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(precision) << value;
+        return std::stod(oss.str());
+    }
+
     json::object StateSerializer::SerializeSingleState(const model::State& state) {
         json::object state_obj;
         state_obj[json_keys::POS] = SerializePoint(state.position);
@@ -246,8 +252,8 @@ namespace json_loader {
 
     json::array StateSerializer::SerializePoint(const model::Pos& point) {
         json::array point_arr;
-        point_arr.push_back(point.x);
-        point_arr.push_back(point.y);
+        point_arr.push_back(format_number(point.x));
+        point_arr.push_back(format_number(point.y));
         return point_arr;
     }
 
