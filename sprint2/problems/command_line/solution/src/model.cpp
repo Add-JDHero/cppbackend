@@ -1,6 +1,7 @@
 #include "model.h"
 
 #include <stdexcept>
+#include <cmath>
 
 namespace model {
 using namespace std::literals;
@@ -216,18 +217,62 @@ using namespace std::literals;
         if (IsWithinAnyRegion(new_position, regions_)) {
             dog->MoveDog(new_position);
         } else {
-            for (const auto& [id, region] : regions_) {
-                if (region.Contains(dog->GetPosition())) {
-                    auto adjusted_position = AdjustPositionToRegion(new_position, region);
-                    if (adjusted_position != new_position) {
-                        dog->StopDog();
-                    }
-                    dog->MoveDog(adjusted_position);
-                    break;
+            Pos max_pos = AdjustPositionToMaxRegion(dog);
+            dog->MoveDog(max_pos);
+            dog->StopDog();
+        }
+    }
+
+    Pos GameSession::AdjustPositionToMaxRegion(const std::shared_ptr<Dog>& dog) {
+        Pos max_pos = dog->GetPosition();
+        double max_diff = 0;
+
+        for (const auto& [region_id, region] : regions_) {
+            if (region.Contains(dog->GetPosition())) {
+                Pos possible_max_pos = MaxValueOfRegion(region, dog->GetDirection(), dog->GetPosition());
+                Pos max_distance_pos = MoveOnMaxDistance(dog->GetPosition(), possible_max_pos, max_diff);
+
+                double dx = max_distance_pos.x - dog->GetPosition().x;
+                double dy = max_distance_pos.y - dog->GetPosition().y;
+                double distance = std::sqrt(dx * dx + dy * dy);
+
+                if (distance > max_diff) {
+                    max_diff = distance;
+                    max_pos = max_distance_pos;
                 }
             }
         }
+
+        return max_pos;
     }
+
+    Pos GameSession::MaxValueOfRegion(Region reg, Direction dir, Pos current_pos) {
+        Pos result = current_pos;
+        if (dir == Direction::EAST) {
+            result.x = reg.max_x;
+        } else if (dir == Direction::WEST) {
+            result.x = reg.min_x;
+        } else if (dir == Direction::SOUTH) {
+            result.y = reg.max_y;
+        } else if (dir == Direction::NORTH) {
+            result.y = reg.min_y;
+        }
+
+        return result;
+    }
+
+    Pos GameSession::MoveOnMaxDistance(const Pos& current, const Pos& possible, double current_max) {
+        double dx = current.x - possible.x;
+        double dy = current.y - possible.y;
+        double dist = std::sqrt(dx * dx + dy * dy);
+
+        if (dist > current_max) {
+            return possible;
+        } 
+
+        return current;
+    }
+    
 
     void GameSession::StopPlayer(Dog::Id id) {
         dogs_[id]->StopDog();
