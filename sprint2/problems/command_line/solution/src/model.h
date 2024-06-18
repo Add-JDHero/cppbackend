@@ -26,6 +26,22 @@ namespace model {
         bool operator!=(const Pos& other) const {
             return std::abs(x - other.x) > EPSILON || std::abs(y - other.y) > EPSILON;
         }
+
+        Pos operator-(const Pos& other) const {
+            return {x - other.x, y - other.y};
+        }
+
+        Pos operator+(const Pos& other) const {
+            return {x + other.x, y + other.y};
+        }
+
+        Pos operator*(double scalar) const {
+            return {x * scalar, y * scalar};
+        }
+
+        double Dot(const Pos& other) const {
+            return x * other.x + y * other.y;
+        }
     };
 
     struct Point {
@@ -239,17 +255,18 @@ namespace model {
             }
         };
 
-        // Добавление дорог в регионы
+        Pos MoveOnMaxDistance(const Pos& current, const Pos& possible, double current_max);
+
+        Pos MaxValueOfRegion(Region reg, Direction dir, Pos current_pos);
+
+        Pos AdjustPositionToMaxRegion(const std::shared_ptr<Dog>& dog);
+
         void AddRoadToRegions(const Road& road, std::unordered_map<int, Region>& regions);
 
-
-        // Инициализация регионов
         void InitializeRegions(const Map& map, std::unordered_map<int, Region>& regions);
 
-        // Проверка, находится ли позиция в любой области
         bool IsWithinAnyRegion(const Pos& pos, const std::unordered_map<int, Region>& regions);
 
-        // Корректировка позиции в рамках региона
         Pos AdjustPositionToRegion(const Pos& position, const Region& region);
 
 
