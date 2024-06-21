@@ -106,52 +106,52 @@ namespace http_handler {
         StringResponse JoinGame(const StringRequest& req,
                                 const JsonResponseHandler& json_response);
 
-        StringResponse MoveUnit(const StringRequest& req, JsonResponseHandler json_response);
+        StringResponse MoveUnit(const StringRequest& req, const JsonResponseHandler& json_response);
 
         StringResponse TickRequest(const StringRequest& req, 
-                                   JsonResponseHandler json_response) const;
+                                   const JsonResponseHandler& json_response) const;
 
         StringResponse GetMapsRequest(const JsonResponseHandler& json_response) const;
         StringResponse GetMapDetailsRequest(const JsonResponseHandler& json_response,
                                             std::string_view map_id) const;
         StringResponse GetPlayersRequest(const StringRequest& req, 
-                                         JsonResponseHandler json_response) const;
+                                         const JsonResponseHandler& json_response) const;
         StringResponse GetGameState(const StringRequest& req,
-                                    JsonResponseHandler json_response) const;
+                                    const JsonResponseHandler& json_response) const;
 
     private:
 
         template <typename Fn>
         StringResponse ExecuteAuthorized(Fn&& action, const StringRequest& req,
-                                         JsonResponseHandler json_response);
+                                         const JsonResponseHandler& json_response);
 
         bool IsValidAuthToken(std::string& auth_header) const;
 
         std::optional<StringResponse> 
-        TokenHandler(const StringRequest& req, JsonResponseHandler json_response) const;
+        TokenHandler(const StringRequest& req, const JsonResponseHandler& json_response) const;
         
         std::optional<StringResponse> 
         TokenHandler(const StringRequest& req, 
-                    JsonResponseHandler json_response,
+                    const JsonResponseHandler& json_response,
                     std::string& token) const;
 
         std::optional<StringResponse> 
-        IsAllowedMethod(const StringRequest& req, JsonResponseHandler json_response,
+        IsAllowedMethod(const StringRequest& req, const JsonResponseHandler& json_response,
                         std::string message = {}) const;
 
         std::optional<StringResponse> 
-        ParseJoinRequest(const StringRequest& req, JsonResponseHandler json_response,
+        ParseJoinRequest(const StringRequest& req, const JsonResponseHandler& json_response,
                          json::object& obj) const;
 
         std::optional<StringResponse> 
-        ParseContentType(const StringRequest& req, JsonResponseHandler json_response) const;
+        ParseContentType(const StringRequest& req, const JsonResponseHandler& json_response) const;
 
         std::optional<StringResponse> 
-        ParseMoveJson(JsonResponseHandler json_response, std::string data,
+        ParseMoveJson(const JsonResponseHandler& json_response, std::string data,
                       std::string& direction) const;
 
         std::optional<StringResponse> 
-        ParseTickJson(JsonResponseHandler json_response, std::string data,
+        ParseTickJson(const JsonResponseHandler& json_response, std::string data,
                       uint64_t& milliseconds) const;
 
         void SetupEndPoits();
@@ -202,7 +202,7 @@ namespace http_handler {
         void SetupEndPoits();
 
         std::optional<StringResponse> 
-        ParseJoinRequest(const StringRequest& req, JsonResponseHandler json_response,
+        ParseJoinRequest(const StringRequest& req, const JsonResponseHandler& json_response,
                          json::object& obj) const;
 
         EmptyResponse CopyResponseWithoutBody(const ResponseVariant& response) const;
@@ -360,7 +360,7 @@ namespace http_handler {
 
     template <typename Fn>
     StringResponse ApiRequestHandler::ExecuteAuthorized(Fn&& action, const StringRequest& req,
-                                                        JsonResponseHandler json_response) {
+                                                        const JsonResponseHandler& json_response) {
         auto optional = TokenHandler(req, json_response);
         if (!optional.has_value()) {
             return action(req, json_response);

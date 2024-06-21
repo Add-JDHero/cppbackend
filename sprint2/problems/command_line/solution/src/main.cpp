@@ -104,15 +104,6 @@ int main(int argc, const char* argv[]) {
             ioc.run(); 
         });
 
-        /* if (!game.IsDebug())
-        { */
-            // Настраиваем вызов метода Tick каждые 50 миллисекунд внутри strand
-            /* auto ticker = std::make_shared<game_time::Ticker>(strand, 50ms,
-                [&game](std::chrono::milliseconds delta) { game.Tick((double(delta.count())) / 1000); }
-            );
-            ticker->Start(); */
-        /* } */
-
     } catch (const std::exception& ex) {
         ServerStopLog(EXIT_FAILURE, ex.what());
 
