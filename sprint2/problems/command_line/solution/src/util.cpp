@@ -152,7 +152,7 @@ namespace util {
     }
 
     bool IsLetter(char c) {
-        return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z';
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
     }
 
     std::string ExtractToken(const std::string& auth_header) {

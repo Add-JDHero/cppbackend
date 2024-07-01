@@ -6,7 +6,6 @@
 
 #include <filesystem>
 #include <boost/json.hpp>
-#include "model.h"
 
 namespace json_loader {
     namespace json = boost::json;
@@ -45,7 +44,7 @@ namespace json_loader {
     private:
         static json::array SerializePoint(const model::Pos& point);
         static json::array SerializeSpeed(const model::Speed& speed);
-        static std::string SerializeDirection(model::Direction direction) ;
+        static std::string SerializeDirection(model::Direction direction);
     };
 
     json::value ParseConfigFile(std::string s);

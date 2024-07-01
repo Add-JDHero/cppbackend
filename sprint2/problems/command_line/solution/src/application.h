@@ -1,42 +1,29 @@
 #pragma once
 
 #include "sdk.h"
-// #include "request_handler.h"
 #include "type_declarations.h"
 #include "model.h"
+#include "player.h"
 
 #include <cstdint>
 #include <memory>
 #include <random>
+#include <algorithm>
 #include <unordered_map>
 #include <iostream>
 #include <boost/functional/hash.hpp>
 #include <boost/json.hpp>
 #include <boost/beast/http.hpp>
 
-namespace detail {
-    struct TokenTag {};
-}  
+
 
 namespace app {
+
+    namespace detail {
+        struct TokenTag {};
+    }
+    
     using Token = util::Tagged<std::string, detail::TokenTag>;
-
-	class Player {
-	public:
-        Player() = delete;
-        Player(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> game_session);
-        model::Dog::Id GetDogId();
-
-        void MovePlayer(std::string direction = "");
-
-        const std::shared_ptr<model::GameSession> GetGameSession() const;
-
-	private:
-        std::shared_ptr<model::Dog> dog_;
-		std::shared_ptr<model::GameSession> game_session_;
-		
-	};
-
 
     class PlayerTokens {
     public:
@@ -67,7 +54,7 @@ namespace app {
     public:
         Token Add(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> game_session);
 
-        std::shared_ptr<Player> GetPlayerByToken(Token token) const;
+        std::shared_ptr<Player> GetPlayerByToken(const Token& token) const;
 
         std::shared_ptr<Player> FindByDogAndMapId(model::Dog::Id dog_id, model::Map::Id map_id);
 
@@ -82,16 +69,16 @@ namespace app {
     public:
         explicit Application(model::Game& game);
         
-        const std::string GetSerializedPlayersList(Token token) const;
-        const std::string GetSerializedGameState(Token token) const;
+        const std::string GetSerializedPlayersList(const Token& token) const;
+        const std::string GetSerializedGameState(const Token& token) const;
 
         bool HasPlayerToken(Token token) const;
 
         std::optional<http_handler::StringResponse> 
-        MovePlayer(Token token,  http_handler::JsonResponseHandler json_response, 
+        MovePlayer(const Token& token,  http_handler::JsonResponseHandler json_response, 
                    std::string direction = "");
 
-        void MovePlayer(Token token, std::string direction = "");
+        void MovePlayer(const Token& token, std::string direction = "");
 
         Token AddPlayer(std::shared_ptr<model::Dog> dog, 
                         std::shared_ptr<model::GameSession> session);
@@ -100,7 +87,7 @@ namespace app {
 
     private:
 
-        const std::vector<std::string> GetPlayersList(Token token) const;
+        const std::vector<std::string> GetPlayersList(const Token& token) const;
 
 		model::Game& game_;
 		Players players_;

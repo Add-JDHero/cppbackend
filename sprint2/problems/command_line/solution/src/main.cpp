@@ -35,9 +35,9 @@ void RunWorkers(unsigned n, const Fn& fn) {
 
 }  // namespace
 
-    // ==================================================================
+    // =================================================================
     // TODO: перенести game в Application (ломается перемещение собаки!) 
-    // ==================================================================
+    // =================================================================
 
 int main(int argc, const char* argv[]) {
 
@@ -95,7 +95,9 @@ int main(int argc, const char* argv[]) {
         ServerStartLog(port, address);
 
         auto ticker = std::make_shared<game_time::Ticker>(strand, 10ms,
-            [&game](std::chrono::milliseconds delta) { game.Tick(double(delta.count()) / double(1000)); }
+            [&game](std::chrono::milliseconds delta) { 
+                game.Tick(static_cast<double>(delta.count()) / static_cast<double>(1000)); 
+            }
         );
         ticker->Start();
 

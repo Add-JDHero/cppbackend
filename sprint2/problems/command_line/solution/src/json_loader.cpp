@@ -223,7 +223,7 @@ namespace json_loader {
         } */
         boost::json::object states_json;
 
-        for (const auto& state: states) {
+        for (const auto& state : states) {
             states_json[std::to_string(state.id)]  = 
                 json_loader::StateSerializer::SerializeSingleState(state);
             std::cout << json::serialize(states_json[std::to_string(state.id)]) << std::endl;

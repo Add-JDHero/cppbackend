@@ -7,25 +7,13 @@
 
 
 namespace app {
-
-    Player::Player(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> game_session):
-        dog_(dog), 
-        game_session_(game_session) {
-        game_session->AddDog(dog_);
+    char to_uppercase(unsigned char c) {
+        return std::toupper(c);
     }
-
-    model::Dog::Id Player::GetDogId() {
-        return dog_->GetId();
+    
+    void to_uppercase_inplace(char& c) {
+        c = to_uppercase(c);
     }
-
-    void Player::MovePlayer(std::string direction) {
-        dog_->SetDogDirSpeed(direction);
-    }
-
-    const std::shared_ptr<model::GameSession> Player::GetGameSession() const {
-        return game_session_;
-    }
-
 
 	Token PlayerTokens::GenerateToken() {
         std::ostringstream ss;
@@ -38,11 +26,19 @@ namespace app {
         std::mt19937 gen(random_device_());
         std::uniform_int_distribution<> dist(0, 1);
 
-        for (char& c : token) {
+        std::transform(token.cbegin(), token.cend(), token.begin(), [&dist, &gen](char c) {
             if (std::isalpha(c) && dist(gen)) {
                 c = std::toupper(c);
             }
-        }
+
+            return c;
+        });
+
+        /* for (char& c : token) {
+            if (std::isalpha(c) && dist(gen)) {
+                c = std::toupper(c);
+            }
+        } */
 
         return Token{token};
     }
@@ -73,7 +69,7 @@ namespace app {
         return token;
     }
 
-    std::shared_ptr<Player> Players::GetPlayerByToken(Token token) const {
+    std::shared_ptr<Player> Players::GetPlayerByToken(const Token& token) const {
         return player_tokens_.FindPlayerByToken(token);
     }
 
@@ -88,12 +84,12 @@ namespace app {
         : game_(game) {
     }
 
-    const std::vector<std::string> Application::GetPlayersList(Token token) const {
+    const std::vector<std::string> Application::GetPlayersList(const Token& token) const {
         auto game_session = players_.GetPlayerByToken(token)->GetGameSession();            
         return game_session->GetPlayersNames();
     }
 
-    const std::string Application::GetSerializedPlayersList(Token token) const {
+    const std::string Application::GetSerializedPlayersList(const Token& token) const {
         std::vector<std::string> names = GetPlayersList(app::Token(token));
         boost::json::object players_json;
         int index = 0;
@@ -120,7 +116,7 @@ namespace app {
         return players_.Add(dog, session);
     }
 
-    const std::string Application::GetSerializedGameState(Token token) const {
+    const std::string Application::GetSerializedGameState(const Token& token) const {
         auto game_session = players_.GetPlayerByToken(token)->GetGameSession();
         std::vector<model::State> states = game_session->GetPlayersUnitStates();
 
@@ -128,7 +124,7 @@ namespace app {
     }
 
     
-    void Application::MovePlayer(Token token, std::string direction) {
+    void Application::MovePlayer(const Token& token, std::string direction) {
         auto player = players_.GetPlayerByToken(token);
         player->MovePlayer(direction);
     }

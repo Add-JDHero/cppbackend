@@ -148,7 +148,8 @@ namespace http_handler {
             std::function<StringResponse(http::status, std::string, std::string_view)>;
 
         using TokenHandler = 
-            std::function<std::optional<StringResponse>(const StringRequest&, const JsonResponseHandler&)>;
+            std::function<std::optional<StringResponse>(const StringRequest&, 
+                                                        const JsonResponseHandler&)>;
 
         auto token_handler = std::make_shared<TokenHandler>(
             [this](const StringRequest& req, const JsonResponseHandler& json_response) 
@@ -160,7 +161,6 @@ namespace http_handler {
                 return std::nullopt;
             }
         );
-
 
         router_->AddRoute({"GET", "HEAD"}, "/api/v1/maps", 
             std::make_unique<HTTPResponseMaker>(
@@ -189,26 +189,18 @@ namespace http_handler {
         router_->AddRoute({"GET", "HEAD"}, "/api/v1/game/players", 
             std::make_shared<HTTPResponseMaker>(
             [this ](const StringRequest& req, const JsonResponseHandler& json_response) -> StringResponse {
-                /* return this->ExecuteAuthorized(GetPlayersRequest, 
-                                               req, json_response); */
-                
                 return this->GetPlayersRequest(req, json_response);
             }));
 
         router_->AddRoute({"GET", "HEAD"}, "/api/v1/game/state", 
             std::make_shared<HTTPResponseMaker>(
             [this](const StringRequest& req, const JsonResponseHandler& json_response) -> StringResponse {
-                // return this->ExecuteAuthorized(this->GetGameState(req, json_response), req, json_response);
-
                 return this->GetGameState(req, json_response);
             }));
             
         router_->AddRoute({"POST"}, "/api/v1/game/player/action", 
             std::make_shared<HTTPResponseMaker>(
             [this](const StringRequest& req, const JsonResponseHandler& json_response) -> StringResponse {
-                /* return this->ExecuteAuthorized(this->MoveUnit(req, json_response), 
-                                               req, json_response); */
-
                 return this->MoveUnit(req, json_response);
             }));
 
@@ -239,9 +231,10 @@ namespace http_handler {
         return ErrorHandler::MakeNotFoundResponse(json_response, "mapNotFound", "Map not found");
     }
 
-    std::optional<StringResponse> ApiRequestHandler::ParseJoinRequest(const StringRequest& req, 
-                                                                      const JsonResponseHandler& json_response,
-                                                                      json::object& obj) const {
+    std::optional<StringResponse> 
+    ApiRequestHandler::ParseJoinRequest(const StringRequest& req, 
+                                        const JsonResponseHandler& json_response,
+                                        json::object& obj) const {
         std::string body = req.body().c_str();
 
         json::error_code ec;
@@ -305,7 +298,8 @@ namespace http_handler {
     }
 
     std::optional<StringResponse> 
-    ApiRequestHandler::TokenHandler(const StringRequest& req, const JsonResponseHandler& json_response) const {
+    ApiRequestHandler::TokenHandler(const StringRequest& req, 
+                                    const JsonResponseHandler& json_response) const {
         std::string token = "";
         try {
             std::string auth_header = std::string(req.base().at(http::field::authorization));
@@ -328,17 +322,21 @@ namespace http_handler {
     ApiRequestHandler::TokenHandler(const StringRequest& req, 
                                     const JsonResponseHandler& json_response,
                                     std::string& token) const {
-        try {
-            std::string auth_header = std::string(req.base().at(http::field::authorization));
-            token = util::ExtractToken(auth_header);
-        } catch (...) {
+        std::string auth_header;
+        
+        auto auth_error = [&json_response]() {
             return ErrorHandler::MakeUnauthorizedResponse(json_response, "invalidToken", 
                                                           "Authorization header is missing");
+        };
+
+        if (!req.base().count(http::field::authorization)) {
+            return auth_error();
         }
 
+        auth_header = std::string(req.base().at(http::field::authorization));
+
         if (token.empty() || !IsValidAuthToken(token)) {
-            return ErrorHandler::MakeUnauthorizedResponse(json_response, "invalidToken", 
-                                                          "Authorization header is missing");
+            return auth_error();
         }
 
         return std::nullopt;
@@ -348,13 +346,14 @@ namespace http_handler {
     std::optional<StringResponse> 
     ApiRequestHandler::ParseContentType(const StringRequest& req,
                                         const JsonResponseHandler& json_response) const {
-        try {
-            std::string content_header = std::string(req.base().at(http::field::content_type));
-            if (content_header != "application/json") { throw; } 
-        } catch (...) {
+        std::string content_header;
+
+        if (!req.base().count(http::field::content_type) || content_header != "application/json") {
             return ErrorHandler::MakeBadRequestResponse(json_response, "invalidArgument", 
                                                         "Invalid content type");
         }
+
+        content_header = std::string(req.base().at(http::field::content_type));
 
         return std::nullopt;
 
@@ -362,9 +361,6 @@ namespace http_handler {
 
     StringResponse ApiRequestHandler::GetPlayersRequest(const StringRequest& req, 
                                                         const JsonResponseHandler& json_response) const {
-        
-        /* // проверка того, что токен есть и он валидный, выполняется с в другом месте 
-        std::string token = util::ExtractToken(std::string(req.base().at(http::field::authorization))); */
         std::string token;
         if (auto optional = TokenHandler(req, json_response, token)) {
             return optional.value();
@@ -414,8 +410,6 @@ namespace http_handler {
 
     StringResponse ApiRequestHandler::MoveUnit(const StringRequest& req, 
                                               const JsonResponseHandler& json_response) {
-        /* // проверка того, что токен есть и он валидный, выполняется с в другом месте 
-        std::string token = util::ExtractToken(std::string(req.base().at(http::field::authorization))); */
         std::string token;
         if (auto optional = TokenHandler(req, json_response, token)) {
             return optional.value();
@@ -543,7 +537,8 @@ namespace http_handler {
             }
 
             return json_response(http::status::not_found, 
-                                 ErrorHandler::SerializeErrorResponseBody("fileNotFound", "File not found"),
+                                 ErrorHandler::SerializeErrorResponseBody("fileNotFound", 
+                                                                          "File not found"),
                                  ContentType::TEXT_PLAIN);
         }
 

@@ -212,7 +212,7 @@ namespace http_handler {
     class LoggingRequestHandler {
 
     public:
-        LoggingRequestHandler(std::shared_ptr<SomeRequestHandler> handler) 
+        explicit LoggingRequestHandler(std::shared_ptr<SomeRequestHandler> handler) 
             : request_handler_(handler) {};
 
         template <typename Body, typename Allocator, typename Send>
@@ -264,7 +264,7 @@ namespace http_handler {
                     send(std::forward<decltype(result)>(result));
                 }, response);
                 auto t2 = clock();
-                this->LogResponse(empty_body_response, int(t2 - t1));
+                this->LogResponse(empty_body_response, static_cast<int>(t2 - t1));
             });
 
         }
