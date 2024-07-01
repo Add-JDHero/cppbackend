@@ -300,30 +300,8 @@ namespace http_handler {
     std::optional<StringResponse> 
     ApiRequestHandler::TokenHandler(const StringRequest& req, 
                                     const JsonResponseHandler& json_response) const {
-        std::string token = "";
-        try {
-            std::string auth_header = std::string(req.base().at(http::field::authorization));
-            token = util::ExtractToken(auth_header);
-        } catch (...) {
-            return ErrorHandler::MakeUnauthorizedResponse(json_response, "invalidToken", 
-                                                          "Authorization header is missing");
-        }
-
-        if (token.empty() || !IsValidAuthToken(token)) {
-            return ErrorHandler::MakeUnauthorizedResponse(json_response, "invalidToken", 
-                                                          "Authorization header is missing");
-        }
-
-        return std::nullopt;
-
-    }
-
-    std::optional<StringResponse> 
-    ApiRequestHandler::TokenHandler(const StringRequest& req, 
-                                    const JsonResponseHandler& json_response,
-                                    std::string& token) const {
         std::string auth_header;
-        
+
         auto auth_error = [&json_response]() {
             return ErrorHandler::MakeUnauthorizedResponse(json_response, "invalidToken", 
                                                           "Authorization header is missing");
@@ -334,13 +312,38 @@ namespace http_handler {
         }
 
         auth_header = std::string(req.base().at(http::field::authorization));
-
+        std::string token = util::ExtractToken(auth_header);
+        
         if (token.empty() || !IsValidAuthToken(token)) {
             return auth_error();
         }
 
         return std::nullopt;
+    }
 
+    std::optional<StringResponse> 
+    ApiRequestHandler::TokenHandler(const StringRequest& req, 
+                                    const JsonResponseHandler& json_response,
+                                    std::string& token) const {
+        std::string auth_header;
+
+        auto auth_error = [&json_response]() {
+            return ErrorHandler::MakeUnauthorizedResponse(json_response, "invalidToken", 
+                                                          "Authorization header is missing");
+        };
+
+        if (!req.base().count(http::field::authorization)) {
+            return auth_error();
+        }
+
+        auth_header = std::string(req.base().at(http::field::authorization));
+        token = util::ExtractToken(auth_header);
+        
+        if (token.empty() || !IsValidAuthToken(token)) {
+            return auth_error();
+        }
+
+        return std::nullopt;
     }
 
     std::optional<StringResponse> 
@@ -348,12 +351,20 @@ namespace http_handler {
                                         const JsonResponseHandler& json_response) const {
         std::string content_header;
 
-        if (!req.base().count(http::field::content_type) || content_header != "application/json") {
+        auto content_type_error = [&json_response]() {
             return ErrorHandler::MakeBadRequestResponse(json_response, "invalidArgument", 
                                                         "Invalid content type");
+        };
+
+        if (req.base().count(http::field::content_type) == 0) {
+            return content_type_error();
         }
 
         content_header = std::string(req.base().at(http::field::content_type));
+
+        if (content_header != "application/json") {
+            return content_type_error();
+        }
 
         return std::nullopt;
 
