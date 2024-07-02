@@ -41,6 +41,8 @@ add_executable(game_server
   src/ticker.h
   src/ticker.cpp
   src/command_line_parser.h
+  src/player.h
+  src/player.cpp
 )
 
 target_link_libraries(game_server CONAN_PKG::boost) 

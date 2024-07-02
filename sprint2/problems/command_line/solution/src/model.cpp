@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <cmath>
+#include <cassert>
 
 namespace model {
 using namespace std::literals;
@@ -152,6 +153,8 @@ using namespace std::literals;
         } else if (dir == "D") {
             SetSpeed(0, default_dog_speed_);
             state_.direction = Direction::SOUTH;
+        } else {
+            assert(false);
         }
 
         return;

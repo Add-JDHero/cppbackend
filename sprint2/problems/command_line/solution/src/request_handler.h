@@ -99,63 +99,64 @@ namespace http_handler {
 
     class ApiRequestHandler {
     public:
-        ApiRequestHandler(app::Application& app);
+        ApiRequestHandler(model::Game& game, fs::path path, app::Application& app);
 
         StringResponse RouteRequest(const StringRequest& req);
 
         StringResponse JoinGame(const StringRequest& req,
                                 const JsonResponseHandler& json_response);
 
-        StringResponse MoveUnit(const StringRequest& req, JsonResponseHandler json_response);
+        StringResponse MoveUnit(const StringRequest& req, const JsonResponseHandler& json_response);
 
         StringResponse TickRequest(const StringRequest& req, 
-                                   JsonResponseHandler json_response) const;
+                                   const JsonResponseHandler& json_response) const;
 
         StringResponse GetMapsRequest(const JsonResponseHandler& json_response) const;
         StringResponse GetMapDetailsRequest(const JsonResponseHandler& json_response,
                                             std::string_view map_id) const;
         StringResponse GetPlayersRequest(const StringRequest& req, 
-                                         JsonResponseHandler json_response) const;
+                                         const JsonResponseHandler& json_response) const;
         StringResponse GetGameState(const StringRequest& req,
-                                    JsonResponseHandler json_response) const;
+                                    const JsonResponseHandler& json_response) const;
 
     private:
 
         template <typename Fn>
         StringResponse ExecuteAuthorized(Fn&& action, const StringRequest& req,
-                                         JsonResponseHandler json_response);
+                                         const JsonResponseHandler& json_response);
 
         bool IsValidAuthToken(std::string& auth_header) const;
 
         std::optional<StringResponse> 
-        TokenHandler(const StringRequest& req, JsonResponseHandler json_response) const;
+        TokenHandler(const StringRequest& req, const JsonResponseHandler& json_response) const;
         
         std::optional<StringResponse> 
         TokenHandler(const StringRequest& req, 
-                    JsonResponseHandler json_response,
+                    const JsonResponseHandler& json_response,
                     std::string& token) const;
 
         std::optional<StringResponse> 
-        IsAllowedMethod(const StringRequest& req, JsonResponseHandler json_response,
+        IsAllowedMethod(const StringRequest& req, const JsonResponseHandler& json_response,
                         std::string message = {}) const;
 
         std::optional<StringResponse> 
-        ParseJoinRequest(const StringRequest& req, JsonResponseHandler json_response,
+        ParseJoinRequest(const StringRequest& req, const JsonResponseHandler& json_response,
                          json::object& obj) const;
 
         std::optional<StringResponse> 
-        ParseContentType(const StringRequest& req, JsonResponseHandler json_response) const;
+        ParseContentType(const StringRequest& req, const JsonResponseHandler& json_response) const;
 
         std::optional<StringResponse> 
-        ParseMoveJson(JsonResponseHandler json_response, std::string data,
+        ParseMoveJson(const JsonResponseHandler& json_response, std::string data,
                       std::string& direction) const;
 
         std::optional<StringResponse> 
-        ParseTickJson(JsonResponseHandler json_response, std::string data,
+        ParseTickJson(const JsonResponseHandler& json_response, std::string data,
                       uint64_t& milliseconds) const;
 
         void SetupEndPoits();
 
+        model::Game& game_;
         fs::path root_dir_;
         app::Application& app_;
 
@@ -164,12 +165,13 @@ namespace http_handler {
 
     class FileRequestHandler {
     public:
-        FileRequestHandler(fs::path path);
+        FileRequestHandler(model::Game& game, fs::path path);
 
         ResponseVariant HandleRequest(const StringRequest& request, 
                                       const JsonResponseHandler& json_response);
 
     private:
+        model::Game& game_;
         fs::path root_dir_;
     };
 
@@ -177,7 +179,7 @@ namespace http_handler {
     public:
         using Strand = net::strand<net::io_context::executor_type>;
 
-        RequestHandler(Strand& api_strand, fs::path path, app::Application& app);
+        RequestHandler(model::Game& game, Strand& api_strand, fs::path path, app::Application& app);
 
         RequestHandler(const RequestHandler&) = delete;
         RequestHandler& operator=(const RequestHandler&) = delete;
@@ -189,17 +191,18 @@ namespace http_handler {
         void operator()(http::request<Body, http::basic_fields<Allocator>>&& req, Send&& send);
 
     private:
+        model::Game& game_;
         fs::path root_dir_;
 
         app::Application& app_;
-        FileRequestHandler file_handler_{root_dir_};
-        ApiRequestHandler api_handler_{app_};
+        FileRequestHandler file_handler_{game_, root_dir_};
+        ApiRequestHandler api_handler_{game_, root_dir_, app_};
         Strand& api_strand_;
 
         void SetupEndPoits();
 
         std::optional<StringResponse> 
-        ParseJoinRequest(const StringRequest& req, JsonResponseHandler json_response,
+        ParseJoinRequest(const StringRequest& req, const JsonResponseHandler& json_response,
                          json::object& obj) const;
 
         EmptyResponse CopyResponseWithoutBody(const ResponseVariant& response) const;
@@ -209,7 +212,7 @@ namespace http_handler {
     class LoggingRequestHandler {
 
     public:
-        LoggingRequestHandler(std::shared_ptr<SomeRequestHandler> handler) 
+        explicit LoggingRequestHandler(std::shared_ptr<SomeRequestHandler> handler) 
             : request_handler_(handler) {};
 
         template <typename Body, typename Allocator, typename Send>
@@ -261,7 +264,7 @@ namespace http_handler {
                     send(std::forward<decltype(result)>(result));
                 }, response);
                 auto t2 = clock();
-                this->LogResponse(empty_body_response, int(t2 - t1));
+                this->LogResponse(empty_body_response, static_cast<int>(t2 - t1));
             });
 
         }
@@ -357,7 +360,7 @@ namespace http_handler {
 
     template <typename Fn>
     StringResponse ApiRequestHandler::ExecuteAuthorized(Fn&& action, const StringRequest& req,
-                                                        JsonResponseHandler json_response) {
+                                                        const JsonResponseHandler& json_response) {
         auto optional = TokenHandler(req, json_response);
         if (!optional.has_value()) {
             return action(req, json_response);

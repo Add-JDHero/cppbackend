@@ -53,12 +53,11 @@ namespace router {
         return node;
     }
 
-    std::vector<HandlerPtr>* Trie::GetHandlers(const std::string& path/* , 
-                                               std::unordered_map<std::string, std::string>& params */) {
+    std::vector<HandlerPtr>* Trie::GetHandlers(const std::string& path) {
         TrieNode* node = root_.get();
         auto segments = SplitPath(path);
         for (const auto& segment : segments) {
-            node = GetNextNode(node, segment/* , params */);
+            node = GetNextNode(node, segment);
             if (!node) {
                 return nullptr;
             }
@@ -80,8 +79,7 @@ namespace router {
     }
 
     
-    TrieNode* Trie::GetNextNode(TrieNode* node, const std::string& segment /*, 
-                                std::unordered_map<std::string, std::string>& params */) {
+    TrieNode* Trie::GetNextNode(TrieNode* node, const std::string& segment) {
         if (node->children.find(segment) != node->children.end()) {
             node = node->children[segment].get();
         } else if (node->children.find("param") != node->children.end()) {
