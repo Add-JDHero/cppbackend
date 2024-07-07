@@ -1,5 +1,4 @@
 #include "model.h"
-#include "loot_generator.h"
 
 #include <chrono>
 #include <stdexcept>
@@ -414,7 +413,9 @@ using namespace std::literals;
 
 
     void Game::ConfigureLootGenerator(double period, double probability) {
-        loot_gen = loot_gen::LootGenerator(period, probability);
+        auto period_in_ms = 
+            std::chrono::milliseconds(static_cast<int>(loot_config_.period * 1000));
+        loot_gen = loot_gen::LootGenerator(period_in_ms, probability);
     }
 
     double Game::GetDefaultDogSpeed() const {

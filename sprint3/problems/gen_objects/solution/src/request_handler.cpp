@@ -94,7 +94,7 @@ namespace http_handler {
             allowed_methods_str += method;
         }
 
-        StringResponse result = json_response(http::status::method_not_allowed,response_body, 
+        StringResponse result = json_response(http::status::method_not_allowed, response_body, 
                                               ContentType::APP_JSON);
         result.set(http::field::allow, allowed_methods_str);
         
@@ -171,7 +171,7 @@ namespace http_handler {
             }
         ));
 
-        router_->AddRoute({"GET", "HEAD"}, "/api/v1/maps/:id", 
+        router_->AddRoute({"GET", "HEAD"}, "/api/v1/maps/:", 
             std::make_unique<HTTPResponseMaker>(
             [this](const StringRequest& req, const JsonResponseHandler& json_response) -> StringResponse {
                 url::UrlParser parser(std::string(req.target()));

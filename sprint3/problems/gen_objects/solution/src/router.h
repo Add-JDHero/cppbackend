@@ -81,6 +81,7 @@ namespace router {
         bool HasRoute(const std::string& method, const std::string& path);
         bool IsAllowedMethod(const std::string& method, const std::string& path);
 
+        std::vector<std::string> FindAllowedPaths(std::string_view path);
 
     private:
         std::unordered_map<std::string, std::unique_ptr<Trie>> trie_;

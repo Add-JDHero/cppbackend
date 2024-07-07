@@ -16,6 +16,8 @@
 
 const double EPSILON = 1e-9;
 
+using namespace std::chrono_literals;
+
 namespace model {
 
     template<typename KeyType, typename ValueType>
@@ -369,9 +371,7 @@ namespace model {
 
         loot_gen::LootGeneratorConfig loot_config_;
 
-        std::chrono::milliseconds base_interval = 
-            std::chrono::milliseconds(static_cast<int>(loot_config_.period * 1000));
-        loot_gen::LootGenerator loot_gen{base_interval, loot_config_.probability};
+        loot_gen::LootGenerator loot_gen{0ms, 0};
 
         std::vector<Map> maps_;
         MapIdToIndex map_id_to_index_;

@@ -122,6 +122,21 @@ namespace router {
         path_to_allowed_methods_[path] = methods;
     }
 
+    std::vector<std::string> Router::FindAllowedPaths(std::string_view path) {
+        if (path_to_allowed_methods_.count(path.data())) {
+            return path_to_allowed_methods_[path.data()];
+        } else {
+            std::string path_with_param = std::string(path.substr(0, path.find_last_of('/')));
+            path_with_param.append("/:");
+
+            if (path_to_allowed_methods_.count(path_with_param)) {
+                return path_to_allowed_methods_[path_with_param];
+            } 
+                
+            return {};
+        }
+    }
+
     http_handler::StringResponse Router::Route(const http_handler::StringRequest& req) {
         auto ver = req.version();
         auto keep = req.keep_alive();
@@ -144,12 +159,12 @@ namespace router {
                 }
             } else {
                 return http_handler::ErrorHandler::
-                    MakeNotAllowedResponse(json_response, path_to_allowed_methods_[path],
+                    MakeNotAllowedResponse(json_response, FindAllowedPaths(path),
                                             "invalidMethod","Invalid method");
             } 
         } else {
             return http_handler::ErrorHandler::
-                MakeNotAllowedResponse(json_response, path_to_allowed_methods_[path],
+                MakeNotAllowedResponse(json_response, FindAllowedPaths(path),
                                        "invalidMethod", "Invalid method");
         }
 
