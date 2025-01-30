@@ -360,9 +360,9 @@ namespace model {
 
     class SessionService {
     public:
-        SessionService(CommonData& data);
-
         using GameSessions = std::vector<std::shared_ptr<GameSession>>;
+
+        SessionService(CommonData& data);
 
         std::shared_ptr<model::GameSession> 
         CreateGameSession(model::Map::Id map_id);

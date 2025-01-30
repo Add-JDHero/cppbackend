@@ -1,0 +1,17 @@
+compilation_database_dir: ./build/
+output_directory: docs/diagrams
+add_compile_flags:
+  - -Wno-implicit-const-int-float-conversion
+diagrams:
+  model_diagram:
+    type: class
+    title: "Model Class Diagram"
+    glob:
+      - src/model.cpp
+    include:
+      namespaces:
+        - model
+    exclude:
+      namespaces:
+        - boost
+        - std

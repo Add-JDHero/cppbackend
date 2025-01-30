@@ -8,8 +8,10 @@
 
 using namespace std::literals;
 
+const unsigned int DEFAULT_TICK_PERIOD = 10;
+
 struct Args {
-    unsigned int period = 0;
+    unsigned int period = DEFAULT_TICK_PERIOD;
     std::string config;
     std::string www_root;
     bool random;
