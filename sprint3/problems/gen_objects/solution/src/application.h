@@ -2,8 +2,8 @@
 
 #include "sdk.h"
 #include "type_declarations.h"
-#include "model.h"
 #include "player.h"
+#include "model.h"
 
 #include <cstdint>
 #include <memory>
@@ -29,13 +29,13 @@ namespace app {
     public:
         PlayerTokens() = default;
 
-        Token AddPlayer(std::shared_ptr<Player> player);
+        Token AddPlayer(std::shared_ptr<Player::Player> player);
 
-        std::shared_ptr<Player> FindPlayerByToken(const Token& token) const;
+        std::shared_ptr<Player::Player> FindPlayerByToken(const Token& token) const;
 
     private:
         using TokenHasher = util::TaggedHasher<Token>;
-        std::unordered_map<Token, std::shared_ptr<Player>, TokenHasher> token_to_player_;
+        std::unordered_map<Token, std::shared_ptr<Player::Player>, TokenHasher> token_to_player_;
 
         std::random_device random_device_;
         std::mt19937_64 generator1_{[this] {
@@ -54,14 +54,14 @@ namespace app {
     public:
         Token Add(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> game_session);
 
-        std::shared_ptr<Player> GetPlayerByToken(const Token& token) const;
+        std::shared_ptr<Player::Player> GetPlayerByToken(const Token& token) const;
 
-        std::shared_ptr<Player> FindByDogAndMapId(model::Dog::Id dog_id, model::Map::Id map_id);
+        std::shared_ptr<Player::Player> FindByDogAndMapId(model::Dog::Id dog_id, model::Map::Id map_id);
 
     private:
         PlayerTokens player_tokens_;
         std::unordered_map<std::pair<uint64_t, std::string>, 
-            std::shared_ptr<Player>, boost::hash<std::pair<uint64_t, std::string>>> players_;
+            std::shared_ptr<Player::Player>, boost::hash<std::pair<uint64_t, std::string>>> players_;
 
     };
 
@@ -91,6 +91,5 @@ namespace app {
 
 		model::Game& game_;
 		Players players_;
-
     };
 }

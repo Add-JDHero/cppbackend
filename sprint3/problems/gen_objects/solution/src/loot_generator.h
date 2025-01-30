@@ -47,6 +47,7 @@ namespace loot_gen {
         static double DefaultGenerator() noexcept {
             return 1.0;
         };
+        
         TimeInterval base_interval_;
         double probability_;
         TimeInterval time_without_loot_{};

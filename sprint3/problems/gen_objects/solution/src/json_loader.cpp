@@ -367,14 +367,14 @@ namespace json_loader {
             double period = obj[json_keys::PERIOD].as_double();
             double probability = obj[json_keys::PROBABILITY].as_double();
 
-            game.ConfigureLootGenerator(period, probability);
+            game.GetLootService().ConfigureLootGenerator(period, probability);
         }
 
         for (auto& map : MapParser::Parse(config)) {
             if (!map.IsDefaultDogSpeedValueConfigured()) {
                 map.SetDefaultDogSpeed(game.GetDefaultDogSpeed());
             }
-            game.AddMap(std::move(map));
+            game.GetMapService().AddMap(std::move(map));
         }
 
         return game;

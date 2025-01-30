@@ -212,7 +212,7 @@ namespace http_handler {
     }
 
     StringResponse ApiRequestHandler::GetMapsRequest(const JsonResponseHandler& json_response) const {
-        std::string maps = json_loader::MapSerializer::SerializeMapsMainInfo(game_.GetMaps());
+        std::string maps = json_loader::MapSerializer::SerializeMapsMainInfo(game_.GetMapService().GetMaps());
 
         return json_response(http::status::ok, std::move(maps), ContentType::APP_JSON);
     }
@@ -220,13 +220,14 @@ namespace http_handler {
     StringResponse ApiRequestHandler::GetMapDetailsRequest(const JsonResponseHandler& json_response,
                                                            std::string_view map_id) const {
         const model::Map::Id id{std::string(map_id)};
-        auto map_ptr = game_.FindMap(id);
+        auto map_ptr = game_.GetMapService().FindMap(id);
         
         if (map_ptr) {
             auto map_json = json_loader::MapSerializer::SerializeSingleMap(*map_ptr);
             json::array loot_types = *loot_types_.mapId_to_lootTypes[map_ptr->GetId()];
             map_json["lootTypes"] = std::move(loot_types);
             std::string serialized_map = boost::json::serialize(std::move(map_json));
+
             return json_response(http::status::ok, std::move(serialized_map), ContentType::APP_JSON);
         }
 
@@ -243,7 +244,7 @@ namespace http_handler {
         auto value = json::parse(body, ec);
     
         if (ec) {
-            std::cout << ec.what() << std::endl;
+            // std::cout << ec.what() << std::endl;
             return ErrorHandler::MakeBadRequestResponse(json_response, 
                                                         "invalidArgument", 
                                                         "Join game request parse error");
@@ -271,7 +272,7 @@ namespace http_handler {
         
         std::string map_id = object.at("mapId").as_string().c_str();
         std::string user_name = object.at("userName").as_string().c_str();
-        auto session = game_.FindGameSession(model::Map::Id{map_id.data()});
+        auto session = game_.GetSessionService().FindGameSession(model::Map::Id{map_id.data()});
         if (user_name.size() == 0) {
             return ErrorHandler::MakeBadRequestResponse(json_response, "invalidArgument", 
                                                         "Invalid name");

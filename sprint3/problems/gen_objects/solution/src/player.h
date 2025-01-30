@@ -8,24 +8,27 @@
 #include <memory>
 #include <iostream>
 
-namespace detail {
-    struct TokenTag {};
-}  
+namespace Player {
 
-using Token = util::Tagged<std::string, detail::TokenTag>;
+    namespace detail {
+        struct TokenTag {};
+    }  
 
-class Player {
-public:
-    Player() = delete;
-    Player(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> game_session);
-    model::Dog::Id GetDogId();
+    using Token = util::Tagged<std::string, detail::TokenTag>;
 
-    void MovePlayer(std::string direction = "");
+    class Player {
+    public:
+        Player() = delete;
+        Player(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> game_session);
+        model::Dog::Id GetDogId();
 
-    const std::shared_ptr<model::GameSession> GetGameSession() const;
+        void MovePlayer(std::string direction = "");
 
-private:
-    std::shared_ptr<model::Dog> dog_;
-    std::shared_ptr<model::GameSession> game_session_;
-    
-};
+        const std::shared_ptr<model::GameSession> GetGameSession() const;
+
+    private:
+        std::shared_ptr<model::Dog> dog_;
+        std::shared_ptr<model::GameSession> game_session_;
+        
+    };
+}

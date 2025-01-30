@@ -166,7 +166,6 @@ using namespace std::literals;
         return state_;
     }
 
-
     GameSession::GameSession(const Map& map) : map_(map), id_(general_id_++) {
         InitializeRegions(map_, regions_);
     }
@@ -389,89 +388,107 @@ using namespace std::literals;
         }
     }
 
-    void Game::AddMap(Map map) {
-        const size_t index = maps_.size();
-        if (auto [it, inserted] = map_id_to_index_.emplace(map.GetId(), index); !inserted) {
+    void MapService::AddMap(Map map) {
+        const size_t index = common_data_.maps_.size();
+        if (auto [it, inserted] = common_data_.map_id_to_index_.emplace(map.GetId(), index); !inserted) {
             throw std::invalid_argument("Map with id "s + *map.GetId() + " already exists"s);
         } else {
             try {
-                maps_.emplace_back(std::move(map));
+               common_data_. maps_.emplace_back(std::move(map));
             } catch (...) {
-                map_id_to_index_.erase(it);
+                common_data_.map_id_to_index_.erase(it);
                 throw;
             }
         }
     }
 
-    const Game::Maps& Game::GetMaps() const noexcept {
-        return maps_;
+    const MapService::Maps& MapService::GetMaps() const noexcept {
+        return common_data_.maps_;
     }
 
     void Game::SetDefaultDogSpeed(double default_speed) {
         default_dog_speed_ = default_speed; 
     }
 
+    void Game::SetDefaultTickTime(double delta_time) {
+        default_tick_time_ = delta_time;
+    }
 
-    void Game::ConfigureLootGenerator(double period, double probability) {
+    void LootService::ConfigureLootTypesToMaps(std::unordered_map<Map::Id, int, 
+                                   util::TaggedHasher<Map::Id>> loot_types) {
+        common_data_.mapId_to_lootTypes_count = std::move(loot_types);
+    }
+
+    void LootService::ConfigureLootGenerator(double period, double probability) {
         auto period_in_ms = 
             std::chrono::milliseconds(static_cast<int>(loot_config_.period * 1000));
-        loot_gen = loot_gen::LootGenerator(period_in_ms, probability);
+        loot_gen_ = loot_gen::LootGenerator(period_in_ms, probability);
     }
 
     double Game::GetDefaultDogSpeed() const {
         return default_dog_speed_;
     }
 
-    std::shared_ptr<GameSession> Game::FindGameSession(Map::Id map_id) {
-        if (!FindMap(map_id)) { return nullptr;}
+    std::shared_ptr<GameSession> SessionService::FindGameSession(Map::Id map_id) {
+        // if (!FindMap(map_id)) { return nullptr;}
 
-        if (map_id_to_session_index_.count(map_id)) {
-            return FindGameSessionBySessionId(map_id_to_session_index_[map_id]);
+        if (common_data_.map_id_to_session_index_.count(map_id)) {
+            return FindGameSessionBySessionId(common_data_.map_id_to_session_index_[map_id]);
         }
 
         return CreateGameSession(map_id);
     }
 
-    std::shared_ptr<GameSession> Game::CreateGameSession(Map::Id map_id) {
-        auto result = std::make_shared<GameSession>(maps_[map_id_to_index_[map_id]]);
-        int index = sessions_.size();
-        sessions_.push_back(result);
-        game_sessions_id_to_index_[result->GetSessionId()] = index;
-        map_id_to_session_index_[map_id] = result->GetSessionId();
+    std::shared_ptr<GameSession> SessionService::CreateGameSession(Map::Id map_id) {
+        auto result = std::make_shared<GameSession>(
+            common_data_.maps_[common_data_.map_id_to_index_[map_id]]
+        );
+        int index = common_data_.sessions_.size();
+        common_data_.sessions_.push_back(result);
+        common_data_.game_sessions_id_to_index_[result->GetSessionId()] = index;
+        common_data_.map_id_to_session_index_[map_id] = result->GetSessionId();
 
         return result;
     }
 
-    void Game::Tick(double delta_time) {
-        for (const auto& session: sessions_) {
+    void SessionService::Tick(double delta_time) {
+        for (const auto& session: common_data_.sessions_) {
             session->Tick(delta_time);
 
-            GenerateLoot(session, delta_time);
+            // GenerateLoot(session, delta_time);
         }
     }
 
-    void Game::GenerateLoot(std::shared_ptr<GameSession> session, double delta_time) {
-        unsigned loot_count = session->GetLootCount();
+    SessionService::SessionService(CommonData& data) 
+        : common_data_(data) {    
+    }
+
+    void LootService::GenerateLoot(double delta_time) {
         unsigned dogs_count = /* session->GetDogs().size() */ 5;
         std::chrono::milliseconds interval = 
             std::chrono::milliseconds(static_cast<int>(delta_time * 1000));
 
-        int loot_types_count = mapId_to_lootTypes_count[session->GetMapId()];
-
-        session->GenerateLoot(loot_gen.Generate(interval, loot_count, dogs_count), loot_types_count);
+        for (const auto& session : common_data_.sessions_) {
+            unsigned loot_count = session->GetLootCount();
+            int loot_types_count = 
+                common_data_.mapId_to_lootTypes_count[session->GetMapId()];
+            session->GenerateLoot(loot_gen_.Generate(interval, loot_count, dogs_count), loot_types_count);
+        }
     }
 
-    const Map* Game::FindMap(const Map::Id& id) const noexcept {
-        if (auto it = map_id_to_index_.find(id); it != map_id_to_index_.end()) {
-            return &maps_.at(it->second);
+    MapService::MapService(CommonData& data) : common_data_(data) {}
+
+    const Map* MapService::FindMap(const Map::Id& id) const noexcept {
+        if (auto it = common_data_.map_id_to_index_.find(id); it != common_data_.map_id_to_index_.end()) {
+            return &common_data_.maps_.at(it->second);
         }
         
         return nullptr;
     }
 
-    std::shared_ptr<GameSession> Game::FindGameSessionBySessionId(GameSession::Id session_id) {
-        if (game_sessions_id_to_index_.count(session_id)) {
-            return sessions_[game_sessions_id_to_index_[session_id]];
+    std::shared_ptr<GameSession> SessionService::FindGameSessionBySessionId(GameSession::Id session_id) {
+        if (common_data_.game_sessions_id_to_index_.count(session_id)) {
+            return common_data_.sessions_[common_data_.game_sessions_id_to_index_[session_id]];
         }
 
         return nullptr;

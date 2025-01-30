@@ -1,7 +1,10 @@
 #pragma once
+#include "tagged.h"
+#include "util.h"
+
+// #include "application.h"
 #include "loot_generator.h"
 #include "sdk.h"
-#include "tagged.h"
 
 #include <chrono>
 #include <cstdint>
@@ -217,7 +220,6 @@ namespace model {
         const Direction& GetDirection() const noexcept;
         const State& GetState() const noexcept;
 
-
         void SetDefaultDogSpeed(double speed);
         void SetSpeed(double x, double y);
         void SetDogDirSpeed(std::string dir);
@@ -247,19 +249,16 @@ namespace model {
 
         Map::Id GetMapId() const;
         Id GetSessionId() const;
-
         double GetMapDefaultSpeed() const;
-
-        uint64_t GetLootCount();
-
         const Dogs& GetDogs() const;
-
         const std::vector<std::string> GetPlayersNames() const;
         const std::vector<State> GetPlayersUnitStates() const;
-
         const LostObjects& GetLostObjects() const {
             return loots_;
         }
+
+        uint64_t GetLootCount();
+        void GenerateLoot(int count, int loot_types_count);
 
         Pos GenerateRandomRoadPosition();
 
@@ -272,8 +271,6 @@ namespace model {
         void StopPlayer(Dog::Id id);
 
         void Tick(double delta_time);
-
-        void GenerateLoot(int count, int loot_types_count);
 
         /* static void SetDefaultTickTime(double delta_time) {
             default_delta_time_ = delta_time;
@@ -313,9 +310,7 @@ namespace model {
         const Map& map_;
         std::vector<std::shared_ptr<Dog>> dogs_vector_;
         std::unordered_map<int, Region> regions_;
-
         std::vector<std::pair<int, Pos>> loots_;
-
         Id id_;
 
         static inline Id general_id_{0};
@@ -323,63 +318,133 @@ namespace model {
         // static double default_delta_time_;
     };
 
-    class Game {
+    struct CommonData {
+        using Maps = std::vector<Map>;
+        using MapIdHasher = util::TaggedHasher<Map::Id>;
+        using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;
+        using MapIdToGameSessions = 
+            std::unordered_map<Map::Id, GameSession::Id, MapIdHasher>;
+        using MapIdToLootTypesCount = std::unordered_map<Map::Id, int, util::TaggedHasher<Map::Id>>;
+        
+        using GameSessions = std::vector<std::shared_ptr<GameSession>>;
+        using GameSessionIdToIndex = 
+            std::unordered_map<GameSession::Id, size_t>;
+
+        
+        GameSessions sessions_;
+        GameSessionIdToIndex game_sessions_id_to_index_;
+
+        MapIdToLootTypesCount mapId_to_lootTypes_count;
+        MapIdToGameSessions map_id_to_session_index_;
+
+        Maps maps_;
+        MapIdToIndex map_id_to_index_;
+    };
+
+    class MapService {
     public:
         using Maps = std::vector<Map>;
-        using GameSessions = std::vector<std::shared_ptr<GameSession>>;
-        using MapIdToLootTypesCount = std::unordered_map<Map::Id, int, util::TaggedHasher<Map::Id>>;
 
-        void AddMap(Map map);
+        MapService() = delete;
+        MapService(CommonData& data);
 
+        void AddMap(model::Map map);
+        
+        const model::Map* FindMap(const model::Map::Id& id) const noexcept;
         const Maps& GetMaps() const noexcept;
-        double GetDefaultDogSpeed() const;
 
-        void ConfigureLootTypesToMaps(std::unordered_map<Map::Id, int, 
-                                      util::TaggedHasher<Map::Id>> loot_types) {
-            mapId_to_lootTypes_count = std::move(loot_types);
-        }
+    private:
+        CommonData& common_data_;
+    };
 
-        void SetDefaultTickTime(double delta_time) {
-            default_tick_time_ = delta_time;
-        }
 
-        void SetDefaultDogSpeed(double default_speed);
+    class SessionService {
+    public:
+        SessionService(CommonData& data);
 
-        void ConfigureLootGenerator(double period, double probability);
+        using GameSessions = std::vector<std::shared_ptr<GameSession>>;
 
-        std::shared_ptr<GameSession> FindGameSession(Map::Id map_id);
+        std::shared_ptr<model::GameSession> 
+        CreateGameSession(model::Map::Id map_id);
+        
+        std::shared_ptr<model::GameSession> 
+        FindGameSession(model::Map::Id map_id);
 
-        std::shared_ptr<GameSession> CreateGameSession(Map::Id map_id);
+        std::shared_ptr<GameSession> 
+        FindGameSessionBySessionId(GameSession::Id session_id);
 
         void Tick(double delta_time);
 
-        const Map* FindMap(const Map::Id& id) const noexcept;
+    private:
+        CommonData& common_data_;
+    };
+
+    class LootService {
+    public:
+        explicit LootService(CommonData& data) : common_data_(data) {}
+
+        void GenerateLoot(double delta_time);
+
+        void ConfigureLootTypesToMaps(std::unordered_map<Map::Id, int, 
+                                      util::TaggedHasher<Map::Id>> loot_types);
+
+        void ConfigureLootGenerator(double period, double probability);
 
     private:
-        using MapIdHasher = util::TaggedHasher<Map::Id>;
-        using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;
+        CommonData& common_data_;
 
-        using GameSessionIdToIndex = std::unordered_map<GameSession::Id, size_t>;
-        using MapIdToGameSessions = std::unordered_map<Map::Id, GameSession::Id, MapIdHasher>;
+        loot_gen::LootGeneratorConfig loot_config_;
+        loot_gen::LootGenerator loot_gen_{0ms, 0};
+    };
 
-        std::shared_ptr<GameSession> FindGameSessionBySessionId(GameSession::Id session_id);
+    class GameEngine {
+    public:
+        GameEngine(SessionService& session_service, LootService& loot_service)
+            : session_service_(session_service)
+            , loot_service_(loot_service) {
+        }
 
-        void GenerateLoot(std::shared_ptr<GameSession> session, double delta_time);
+        void Tick(double delta_time) {
+            session_service_.Tick(delta_time);
+            loot_service_.GenerateLoot(delta_time);
+        }
+
+    private:
+        SessionService& session_service_;
+        LootService& loot_service_;
+    };
+
+    class Game {
+    public:
+        Game()
+            : common_data_()
+            , session_service_(common_data_)
+            , map_service_(common_data_)
+            , loot_service_(common_data_)
+            , engine_(session_service_, loot_service_) {
+        }
+
+        double GetDefaultDogSpeed() const;
+
+        void SetDefaultTickTime(double delta_time);
+        void SetDefaultDogSpeed(double default_speed);
+
+        GameEngine& GetEngine() { return engine_; }
+        SessionService& GetSessionService() { return session_service_; }
+        MapService& GetMapService() { return map_service_; }
+        LootService& GetLootService() { return loot_service_; }
+
+    private:
+        CommonData common_data_;
 
         double default_dog_speed_ = 1.0;
         double default_tick_time_ = 0;
 
-        loot_gen::LootGeneratorConfig loot_config_;
+        GameEngine engine_;
 
-        loot_gen::LootGenerator loot_gen{0ms, 0};
-
-        std::vector<Map> maps_;
-        MapIdToIndex map_id_to_index_;
-        MapIdToGameSessions map_id_to_session_index_;
-        MapIdToLootTypesCount mapId_to_lootTypes_count;
-
-        GameSessions sessions_;
-        GameSessionIdToIndex game_sessions_id_to_index_;
+        MapService map_service_;
+        SessionService session_service_;
+        LootService loot_service_;
     };
 
 }  // namespace model

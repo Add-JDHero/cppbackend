@@ -36,8 +36,8 @@ void RunWorkers(unsigned n, const Fn& fn) {
     fn();
 }
 
-model::Game::MapIdToLootTypesCount ExtractLootTypes(MapLootTypes& loot_types) {
-    model::Game::MapIdToLootTypesCount result;
+model::CommonData::MapIdToLootTypesCount ExtractLootTypes(MapLootTypes& loot_types) {
+    model::CommonData::MapIdToLootTypesCount result;
 
     for (const auto& [map_id, json_array] : loot_types.mapId_to_lootTypes) {
         int loot_count = json_array->size();
@@ -68,17 +68,17 @@ int main(int argc, const char* argv[]) {
         try {
             if (auto args = ParseCommandLine(argc, argv)) {
                 arg = *args;
-                } else {
+            } else {
                 return EXIT_FAILURE;
-                }
-            } catch (const std::exception& e) {
-                std::cout << "Parse arguments failure. " << e.what() << std::endl;
-                return EXIT_FAILURE;
+            }
+        } catch (const std::exception& e) {
+            std::cout << "Parse arguments failure. " << e.what() << std::endl;
+            return EXIT_FAILURE;
         }
 
         double tick_time = static_cast<double>(arg.period) / static_cast<double>(1000);
 
-        // 1. Загружаем карту из файла и построить модель игры
+        // 1. Загружаем карту из файла и строим модель игры
         model::Game game = json_loader::LoadGame(arg.config);
 
         json::value config = 
@@ -87,7 +87,7 @@ int main(int argc, const char* argv[]) {
         MapLootTypes loot_types = json_loader::ParseLootTypes(config);
 
         game.SetDefaultTickTime(tick_time);
-        game.ConfigureLootTypesToMaps(ExtractLootTypes(loot_types));
+        game.GetLootService().ConfigureLootTypesToMaps(ExtractLootTypes(loot_types));
 
         // model::GameSession::SetDefaultTickTime(tick_time);
         app::Application app(game);
@@ -122,12 +122,11 @@ int main(int argc, const char* argv[]) {
         // Cообщает тестам о том, что сервер запущен и готов обрабатывать запросы
         ServerStartLog(port, address);
 
-
         auto ms = std::chrono::milliseconds(static_cast<int>(arg.period));
         auto ticker = 
             std::make_shared<game_time::Ticker>(strand, ms,
             [&game](std::chrono::milliseconds delta) { 
-                game.Tick(static_cast<double>(delta.count()) / static_cast<double>(1000)); 
+                game.GetEngine().Tick(static_cast<double>(delta.count()) / static_cast<double>(1000)); 
             }
         );
         ticker->Start();

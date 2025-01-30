@@ -1,10 +1,10 @@
 #include "application.h"
 #include "handlers.h"
 #include "json_loader.h"
+#include "player.h"
 #include "type_declarations.h"
 #include <boost/json/object.hpp>
 #include <iomanip>
-
 
 namespace app {
     char to_uppercase(unsigned char c) {
@@ -34,23 +34,17 @@ namespace app {
             return c;
         });
 
-        /* for (char& c : token) {
-            if (std::isalpha(c) && dist(gen)) {
-                c = std::toupper(c);
-            }
-        } */
-
         return Token{token};
     }
 
-    Token PlayerTokens::AddPlayer(std::shared_ptr<Player> player) {
+    Token PlayerTokens::AddPlayer(std::shared_ptr<Player::Player> player) {
         Token token = GenerateToken();
         token_to_player_[token] = player;
 
         return token;
     }
 
-    std::shared_ptr<Player> PlayerTokens::FindPlayerByToken(const Token& token) const {
+    std::shared_ptr<Player::Player> PlayerTokens::FindPlayerByToken(const Token& token) const {
         auto player = token_to_player_.find(token);
         if (player != token_to_player_.end())
             return player->second;
@@ -61,19 +55,19 @@ namespace app {
 
     Token Players::Add(std::shared_ptr<model::Dog> dog, 
                        std::shared_ptr<model::GameSession> game_session) {
-        std::shared_ptr<Player> player = std::make_shared<Player>(dog, game_session);
+        std::shared_ptr<Player::Player> player = std::make_shared<Player::Player>(dog, game_session);
         Token token = player_tokens_.AddPlayer(player);
         players_[{dog->GetId(), *(game_session->GetMapId())}] = 
-            std::make_shared<Player>(dog, game_session);
+            std::make_shared<Player::Player>(dog, game_session);
     
         return token;
     }
 
-    std::shared_ptr<Player> Players::GetPlayerByToken(const Token& token) const {
+    std::shared_ptr<Player::Player> Players::GetPlayerByToken(const Token& token) const {
         return player_tokens_.FindPlayerByToken(token);
     }
 
-    std::shared_ptr<Player> Players::FindByDogAndMapId(model::Dog::Id dog_id, 
+    std::shared_ptr<Player::Player> Players::FindByDogAndMapId(model::Dog::Id dog_id, 
                                                         model::Map::Id map_id) {
         return players_[{dog_id, *map_id}];
     }
@@ -130,6 +124,6 @@ namespace app {
     }
 
     void Application::Tick(double delta_time) const {
-        game_.Tick(delta_time / 1000);
+        game_.GetEngine().Tick(delta_time / 1000);
     } 
 }
