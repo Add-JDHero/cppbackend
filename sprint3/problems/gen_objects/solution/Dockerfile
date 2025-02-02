@@ -1,15 +1,14 @@
-# Создать образ на основе базового слоя gcc (там будет ОС и сам компилятор).
-# 11.3 — используемая версия gcc.
-FROM gcc:11.3 as build
+FROM ubuntu:22.04 as build
 
 # Выполнить установку зависимостей внутри контейнера.
-RUN apt update && \
-    apt install -y \
-      python3-pip \
-      cmake \
-    && \
-    pip install conan==1.*
-
+RUN apt update && apt install -y \
+    g++ \
+    gcc \
+    cmake \
+    python3 \
+    python3-pip \
+    git \
+    && pip install conan==1.*
 
 RUN conan profile new default --detect
 
