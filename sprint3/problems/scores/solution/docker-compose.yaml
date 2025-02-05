@@ -1,0 +1,26 @@
+ version: "3.9"
+
+ services:
+   build_server:
+     build:
+       context: .
+       dockerfile: Dockerfile
+       target: build
+     command: ["/bin/bash"]  # Для отладки
+
+   my_http_server:
+     depends_on:
+       - build_server
+     build:
+       context: .
+       dockerfile: Dockerfile
+       target: run
+     ports:
+       - "8080:8080"
+     restart: "no"
+     command:
+       - /app/game_server
+       - "--config-file"
+       - "/app/data/config.json"
+       - "--www-root"
+       - "/app/static"
