@@ -70,7 +70,7 @@ namespace json_loader {
             json::object obj = map.as_object();
             if (obj.if_contains(json_keys::LOOT_TYPES)) {
                 model::Map::Id id = model::Map::Id{obj["id"].as_string().data()};
-                result.mapId_to_lootTypes[id] = 
+                result[id] = 
                     std::make_shared<boost::json::array>(obj[json_keys::LOOT_TYPES].as_array());
             }
         }
@@ -351,6 +351,16 @@ namespace json_loader {
         return json_value;
     }
 
+    /* model::CommonData::MapLootTypes ExtractLootTypes(const MapLootTypes& loot_types) {
+        model::CommonData::MapLootTypes result;
+
+        for (const auto& [map_id, json_array] : loot_types) {
+            result[map_id] = json_array;
+        }
+
+        return result;
+    }   */ 
+
     model::Game LoadGame(const std::filesystem::path& file_path) {
         // Загрузить модель игры из файла
         model::Game game;
@@ -376,6 +386,9 @@ namespace json_loader {
             }
             game.GetMapService().AddMap(std::move(map));
         }
+
+        MapLootTypes loot_types = json_loader::ParseLootTypes(config);
+        game.GetLootService().ConfigureLootTypes(loot_types);
 
         return game;
     }

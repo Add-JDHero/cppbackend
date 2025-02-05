@@ -36,18 +36,6 @@ void RunWorkers(unsigned n, const Fn& fn) {
     fn();
 }
 
-model::CommonData::MapIdToLootTypesCount ExtractLootTypes(MapLootTypes& loot_types) {
-    model::CommonData::MapIdToLootTypesCount result;
-
-    for (const auto& [map_id, json_array] : loot_types.mapId_to_lootTypes) {
-        int loot_count = json_array->size();
-
-        result[map_id] = loot_count;
-    }
-
-    return result;
-}
-
 }  // namespace
 
     // =================================================================
@@ -80,14 +68,7 @@ int main(int argc, const char* argv[]) {
 
         // 1. Загружаем карту из файла и строим модель игры
         model::Game game = json_loader::LoadGame(arg.config);
-
-        json::value config = 
-            json_loader::ParseConfigFile(util::ReadFromFileIntoString(arg.config));
-
-        MapLootTypes loot_types = json_loader::ParseLootTypes(config);
-
         game.SetDefaultTickTime(tick_time);
-        game.GetLootService().ConfigureLootTypesToMaps(ExtractLootTypes(loot_types));
 
         // model::GameSession::SetDefaultTickTime(tick_time);
         app::Application app(game);
@@ -106,10 +87,9 @@ int main(int argc, const char* argv[]) {
             }
         });
 
-
         // 4. Создаём обработчик HTTP-запросов и связываем его с моделью игры
         auto handler = 
-            std::make_shared<http_handler::RequestHandler>(game, strand, arg.www_root, app, loot_types);
+            std::make_shared<http_handler::RequestHandler>(game, strand, arg.www_root, app);
         http_handler::LoggingRequestHandler logging_handler(handler);
 
         // 5. Запустить обработчик HTTP-запросов, делегируя их обработчику запросов

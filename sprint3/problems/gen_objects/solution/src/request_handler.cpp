@@ -129,12 +129,11 @@ namespace http_handler {
     }
 
     RequestHandler::RequestHandler(model::Game& game, Strand& api_strand, fs::path path, 
-                                   app::Application& app, MapLootTypes& loot_types)
+                                   app::Application& app)
         : game_{game}
         , api_strand_(api_strand)
         , root_dir_(path)
-        , app_(app) 
-        , loot_types_(loot_types) {
+        , app_(app) {
     }
 
 
@@ -224,7 +223,7 @@ namespace http_handler {
         
         if (map_ptr) {
             auto map_json = json_loader::MapSerializer::SerializeSingleMap(*map_ptr);
-            json::array loot_types = *loot_types_.mapId_to_lootTypes[map_ptr->GetId()];
+            json::array loot_types = *game_.GetLootService().GetLootTypes().at(map_ptr->GetId());
             map_json["lootTypes"] = std::move(loot_types);
             std::string serialized_map = boost::json::serialize(std::move(map_json));
 
@@ -564,10 +563,9 @@ namespace http_handler {
     }
 
     ApiRequestHandler::ApiRequestHandler(model::Game& game, fs::path path, 
-                                         app::Application& app, MapLootTypes& loot_types) 
+                                         app::Application& app) 
         : game_(game), root_dir_(path), app_(app)
-        , router_(std::make_unique<router::Router>())
-        , loot_types_(loot_types) {
+        , router_(std::make_unique<router::Router>()) {
             SetupEndPoits();
     }
 

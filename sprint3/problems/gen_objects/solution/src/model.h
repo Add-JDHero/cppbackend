@@ -324,7 +324,11 @@ namespace model {
         using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;
         using MapIdToGameSessions = 
             std::unordered_map<Map::Id, GameSession::Id, MapIdHasher>;
-        using MapIdToLootTypesCount = std::unordered_map<Map::Id, int, util::TaggedHasher<Map::Id>>;
+        // using MapIdToLootTypesCount = std::unordered_map<Map::Id, int, util::TaggedHasher<Map::Id>>;
+        using MapLootTypes =
+            std::unordered_map<model::Map::Id, 
+                              std::shared_ptr<boost::json::array>,
+                              util::TaggedHasher<model::Map::Id>>;
         
         using GameSessions = std::vector<std::shared_ptr<GameSession>>;
         using GameSessionIdToIndex = 
@@ -334,8 +338,8 @@ namespace model {
         GameSessions sessions_;
         GameSessionIdToIndex game_sessions_id_to_index_;
 
-        MapIdToLootTypesCount mapId_to_lootTypes_count;
-        MapIdToGameSessions map_id_to_session_index_;
+        MapLootTypes mapId_to_lootTypes_;
+        MapIdToGameSessions mapId_to_session_index_;
 
         Maps maps_;
         MapIdToIndex map_id_to_index_;
@@ -385,10 +389,13 @@ namespace model {
 
         void GenerateLoot(double delta_time);
 
-        void ConfigureLootTypesToMaps(std::unordered_map<Map::Id, int, 
-                                      util::TaggedHasher<Map::Id>> loot_types);
+        void ConfigureLootTypes(CommonData::MapLootTypes loot_types);
 
         void ConfigureLootGenerator(double period, double probability);
+
+        const CommonData::MapLootTypes& GetLootTypes() {
+            return common_data_.mapId_to_lootTypes_;
+        }
 
     private:
         CommonData& common_data_;

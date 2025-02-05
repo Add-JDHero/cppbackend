@@ -11,6 +11,9 @@
 namespace json_loader {
     namespace json = boost::json;
     using namespace std::literals;
+    
+    /* model::CommonData::MapLootTypes
+    ExtractLootTypes(const MapLootTypes& loot_types); */
 
     MapLootTypes ParseLootTypes(const json::value& obj);
 

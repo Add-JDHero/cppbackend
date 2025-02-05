@@ -1,10 +1,9 @@
-## run with docker:
+## Запуск сервера в Docker
 
+### Сборка и запуск контейнера
+```sh
+docker compose up --build
 ```
 
-docker compose up
-
-```
-
-# View result
+## View result
 http://localhost:8080

@@ -101,7 +101,7 @@ namespace http_handler {
     class ApiRequestHandler {
     public:
         ApiRequestHandler(model::Game& game, fs::path path, 
-                          app::Application& app, MapLootTypes& loot_types);
+                          app::Application& app);
 
         StringResponse RouteRequest(const StringRequest& req);
 
@@ -161,7 +161,6 @@ namespace http_handler {
         model::Game& game_;
         fs::path root_dir_;
         app::Application& app_;
-        MapLootTypes& loot_types_;
 
         std::unique_ptr<router::Router> router_;
     };
@@ -183,8 +182,8 @@ namespace http_handler {
         using Strand = net::strand<net::io_context::executor_type>;
 
         RequestHandler(model::Game& game, Strand& api_strand, fs::path path, 
-                       app::Application& app, MapLootTypes& loot_types);
-
+                       app::Application& app);
+                       
         RequestHandler(const RequestHandler&) = delete;
         RequestHandler& operator=(const RequestHandler&) = delete;
 
@@ -196,12 +195,11 @@ namespace http_handler {
 
     private:
         model::Game& game_;
-        MapLootTypes& loot_types_;
         fs::path root_dir_;
 
         app::Application& app_;
         FileRequestHandler file_handler_{game_, root_dir_};
-        ApiRequestHandler api_handler_{game_, root_dir_, app_, loot_types_};
+        ApiRequestHandler api_handler_{game_, root_dir_, app_};
         Strand& api_strand_;
 
         void SetupEndPoits();

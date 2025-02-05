@@ -1,4 +1,5 @@
 #include "model.h"
+#include "extra_data.h"
 
 #include <chrono>
 #include <stdexcept>
@@ -414,9 +415,8 @@ using namespace std::literals;
         default_tick_time_ = delta_time;
     }
 
-    void LootService::ConfigureLootTypesToMaps(std::unordered_map<Map::Id, int, 
-                                   util::TaggedHasher<Map::Id>> loot_types) {
-        common_data_.mapId_to_lootTypes_count = std::move(loot_types);
+    void LootService::ConfigureLootTypes(MapLootTypes loot_types) {
+        common_data_.mapId_to_lootTypes_ = std::move(loot_types);
     }
 
     void LootService::ConfigureLootGenerator(double period, double probability) {
@@ -432,8 +432,8 @@ using namespace std::literals;
     std::shared_ptr<GameSession> SessionService::FindGameSession(Map::Id map_id) {
         // if (!FindMap(map_id)) { return nullptr;}
 
-        if (common_data_.map_id_to_session_index_.count(map_id)) {
-            return FindGameSessionBySessionId(common_data_.map_id_to_session_index_[map_id]);
+        if (common_data_.mapId_to_session_index_.count(map_id)) {
+            return FindGameSessionBySessionId(common_data_.mapId_to_session_index_[map_id]);
         }
 
         return CreateGameSession(map_id);
@@ -446,7 +446,7 @@ using namespace std::literals;
         int index = common_data_.sessions_.size();
         common_data_.sessions_.push_back(result);
         common_data_.game_sessions_id_to_index_[result->GetSessionId()] = index;
-        common_data_.map_id_to_session_index_[map_id] = result->GetSessionId();
+        common_data_.mapId_to_session_index_[map_id] = result->GetSessionId();
 
         return result;
     }
@@ -471,7 +471,7 @@ using namespace std::literals;
         for (const auto& session : common_data_.sessions_) {
             unsigned loot_count = session->GetLootCount();
             int loot_types_count = 
-                common_data_.mapId_to_lootTypes_count[session->GetMapId()];
+                common_data_.mapId_to_lootTypes_[session->GetMapId()]->size();
             session->GenerateLoot(loot_gen_.Generate(interval, loot_count, dogs_count), loot_types_count);
         }
     }

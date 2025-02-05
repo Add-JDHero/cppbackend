@@ -12,8 +12,7 @@ struct LootGeneratorConfig {
     double probability = 0;
 };
 
-struct MapLootTypes {
+using MapLootTypes =
     std::unordered_map<model::Map::Id, 
                        std::shared_ptr<boost::json::array>,
-                       util::TaggedHasher<model::Map::Id>> mapId_to_lootTypes;
-};
+                       util::TaggedHasher<model::Map::Id>>;
