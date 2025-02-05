@@ -1,0 +1,46 @@
+class VectorItemGathererProvider : public collision_detector::ItemGathererProvider {
+public:
+    VectorItemGathererProvider(std::vector<collision_detector::Item> items,
+                               std::vector<collision_detector::Gatherer> gatherers)
+        : items_(items)
+        , gatherers_(gatherers) {
+    }
+
+    
+    size_t ItemsCount() const override {
+        return items_.size();
+    }
+    collision_detector::Item GetItem(size_t idx) const override {
+        return items_[idx];
+    }
+    size_t GatherersCount() const override {
+        return gatherers_.size();
+    }
+    collision_detector::Gatherer GetGatherer(size_t idx) const override {
+        return gatherers_[idx];
+    }
+
+private:
+    std::vector<collision_detector::Item> items_;
+    std::vector<collision_detector::Gatherer> gatherers_;
+};
+
+class CompareEvents {
+public:
+    bool operator()(const collision_detector::GatheringEvent& l,
+                    const collision_detector::GatheringEvent& r) {
+        if (l.gatherer_id != r.gatherer_id || l.item_id != r.item_id) 
+            return false;
+
+        static const double eps = 1e-10;
+
+        if (std::abs(l.sq_distance - r.sq_distance) > eps) {
+            return false;
+        }
+
+        if (std::abs(l.time - r.time) > eps) {
+            return false;
+        }
+        return true;
+    }
+};
