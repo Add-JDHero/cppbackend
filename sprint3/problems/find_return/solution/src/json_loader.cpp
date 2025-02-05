@@ -78,6 +78,7 @@ namespace json_loader {
         return result;
     }
 
+
     loot_gen::LootGeneratorConfig ParseLootGeneratorConfig(const json::object& obj) {
         loot_gen::LootGeneratorConfig config{
             obj.at(json_keys::PERIOD).as_double(),
@@ -94,6 +95,10 @@ namespace json_loader {
 
         if (auto val = obj.if_contains(json_keys::MAP_DEFAULT_SPEED)) {
             map.SetDefaultDogSpeed((*val).as_double());
+        }
+
+        if (auto val = obj.if_contains("bagCapacity")) {
+            map.SetBagCapacity(val->as_int64());
         }
 
         if (obj.contains(json_keys::ROADS)) {
@@ -290,18 +295,30 @@ namespace json_loader {
 
     json::object StateSerializer::SerializeSingleState(const model::State& state) {
         json::object state_obj;
-        state_obj[json_keys::POS] = SerializePoint(state.position);
-        state_obj[json_keys::SPEED] = SerializeSpeed(state.speed);
-        state_obj[json_keys::DIR] = SerializeDirection(state.direction);
+        state_obj["pos"] = SerializePoint(state.position);
+        state_obj["speed"] = SerializeSpeed(state.speed);
+        state_obj["dir"] = SerializeDirection(state.direction);
+        state_obj["score"] = state.score;
+
+        json::array bag_json;
+        for (const auto& item : state.bag) {
+            json::object item_json;
+            item_json["id"] = item.first;
+            item_json["type"] = item.second;
+            bag_json.push_back(item_json);
+        }
+        state_obj["bag"] = std::move(bag_json);
 
         return state_obj;
     }
 
-    json::object StateSerializer::SerializeSingleLostObject(const std::pair<int, model::Pos> lost_object) {
+
+
+    json::object StateSerializer::SerializeSingleLostObject(const std::tuple<int, int, model::Pos> lost_object) {
         json::object lost_obj;
 
-        lost_obj[json_keys::TYPE] = lost_object.first;
-        lost_obj[json_keys::POS] = SerializePoint(lost_object.second);
+        lost_obj[json_keys::TYPE] = std::get<1>(lost_object);
+        lost_obj[json_keys::POS] = SerializePoint(std::get<2>(lost_object));
 
         return lost_obj;
     }

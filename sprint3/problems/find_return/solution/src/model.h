@@ -85,6 +85,8 @@ namespace model {
         Pos position{0, 0};
         Speed speed{0, 0};
         Direction direction{Direction::DEFAULT};
+        std::vector<std::pair<int, int>> bag;
+        int score = 0;
         Id id;
     };
 
@@ -190,6 +192,10 @@ namespace model {
 
         bool IsDefaultDogSpeedValueConfigured() const;
 
+        void SetBagCapacity(int capacity) { bag_capacity_ = capacity; }
+
+        int GetBagCapacity() const { return bag_capacity_; }
+
         void AddRoad(const Road& road);
         void AddBuilding(const Building& building);
         void AddOffice(Office office);
@@ -203,6 +209,8 @@ namespace model {
         Buildings buildings_;
 
         double default_dog_speed_ = 1.0;
+
+        size_t bag_capacity_ = 3;
 
         OfficeIdToIndex warehouse_id_to_index_;
         Offices offices_;
@@ -221,6 +229,24 @@ namespace model {
         const Direction& GetDirection() const noexcept;
         const State& GetState() const noexcept;
 
+        void AddToBag(int loot_id, int loot_type) {
+            if (state_.bag.size() < bag_capacity_) {
+                state_.bag.emplace_back(loot_id, loot_type);
+            }
+        }
+
+        void ClearBag() { state_.bag.clear(); }
+
+        const std::vector<std::pair<int, int>>& GetBag() const {
+            return state_.bag;
+        }
+
+        void SetBagCapacity(size_t capacity) {
+            bag_capacity_ = capacity;
+        }
+
+        void AddScore(int score) { state_.score += score; }
+
         void SetDefaultDogSpeed(double speed);
         void SetSpeed(double x, double y);
         void SetDogDirSpeed(std::string dir);
@@ -236,6 +262,8 @@ namespace model {
         double current_speed = 0;
         double default_dog_speed_ = 0;
 
+        size_t bag_capacity_ = 3;
+
         std::string name_;
         static inline Id general_id_ = 0;
     };
@@ -244,9 +272,9 @@ namespace model {
     public:
         using Id = uint64_t;
         using Dogs = std::unordered_map<Dog::Id, std::shared_ptr<Dog>>;
-        using LostObjects = std::vector<std::pair<int, Pos>>;
+        using LostObjects = std::vector<std::tuple<int, int, Pos>>;
     public:
-        GameSession(const Map& map);
+        GameSession(const Map& map, std::unordered_map<int, int> loot_values);
 
         Map::Id GetMapId() const;
         Id GetSessionId() const;
@@ -254,9 +282,9 @@ namespace model {
         const Dogs& GetDogs() const;
         const std::vector<std::string> GetPlayersNames() const;
         const std::vector<State> GetPlayersUnitStates() const;
-        const LostObjects& GetLostObjects() const {
-            return loots_;
-        }
+        const LostObjects& GetLostObjects() const {return loots_; }
+
+        int GetLootValue(int loot_type) const;
 
         uint64_t GetLootCount();
         void GenerateLoot(int count, int loot_types_count);
@@ -277,10 +305,6 @@ namespace model {
         void StopPlayer(Dog::Id id);
 
         void Tick(double delta_time);
-
-        /* static void SetDefaultTickTime(double delta_time) {
-            default_delta_time_ = delta_time;
-        } */
     
     private:
 
@@ -316,12 +340,14 @@ namespace model {
         const Map& map_;
         std::vector<std::shared_ptr<Dog>> dogs_vector_;
         std::unordered_map<int, Region> regions_;
-        std::vector<std::pair<int, Pos>> loots_;
+
+        std::unordered_map<int, int> lootId_to_value_;
+        LostObjects loots_;
         Id id_;
 
-        static inline Id general_id_{0};
+        size_t bag_capacity_;
 
-        // static double default_delta_time_;
+        static inline Id general_id_{0};
     };
 
     struct CommonData {

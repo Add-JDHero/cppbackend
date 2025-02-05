@@ -167,9 +167,40 @@ using namespace std::literals;
         return state_;
     }
 
-    GameSession::GameSession(const Map& map) : map_(map), id_(general_id_++) {
+    std::shared_ptr<GameSession> SessionService::CreateGameSession(Map::Id map_id) {
+        auto& map = common_data_.maps_[common_data_.map_id_to_index_[map_id]];
+
+        // Наполняем lootId_to_value_
+        std::unordered_map<int, int> loot_values;
+        auto it = common_data_.mapId_to_lootTypes_.find(map_id);
+        int item_type = 0;
+        if (it != common_data_.mapId_to_lootTypes_.end()) {
+            const auto& loot_array = *it->second;
+            for (const auto& item : loot_array) {
+                int value = item.at("value").as_int64();
+                loot_values[item_type++] = value;
+            }
+        }
+
+        // Создаём GameSession с lootId_to_value_
+        auto result = std::make_shared<GameSession>(map, std::move(loot_values));
+
+        int index = common_data_.sessions_.size();
+        common_data_.sessions_.push_back(result);
+        common_data_.game_sessions_id_to_index_[result->GetSessionId()] = index;
+        common_data_.mapId_to_session_index_[map_id] = result->GetSessionId();
+
+        return result;
+    }
+
+    GameSession::GameSession(const Map& map, std::unordered_map<int, int> loot_values)
+        : map_(map)
+        , id_(general_id_++)
+        , bag_capacity_(map.GetBagCapacity())
+        , lootId_to_value_(std::move(loot_values)) {
         InitializeRegions(map_, regions_);
     }
+
 
     Map::Id GameSession::GetMapId() const {
         return map_.GetId();
@@ -298,7 +329,7 @@ using namespace std::literals;
         std::vector<collision_detector::Item> items;
         for (const auto& loot : loots_) {
             items.push_back({
-                geom::Point2D(loot.second.x, loot.second.y), // Координаты предмета
+                geom::Point2D(std::get<2>(loot).x, std::get<2>(loot).y), // Координаты предмета
                 0.0 // Ширина предмета (нулевая)
             });
         }
@@ -307,42 +338,61 @@ using namespace std::literals;
 
     void GameSession::Tick(double delta_time) {
         using namespace collision_detector;
-        // 1. Получаем все события сбора предметов
-        std::vector<GatheringEvent> 
-            events = FindGatherEvents(
-                VectorItemGathererProvider(GetItems(), GetGatherers(delta_time))
-            );
+
+        std::vector<GatheringEvent> events = FindGatherEvents(
+            VectorItemGathererProvider(GetItems(), GetGatherers(delta_time))
+        );
 
         double last_time = 0.0;
         for (const auto& event : events) {
-            double event_real_time = event.time * delta_time; // Конвертируем `time` в реальное время
-            double delta = event_real_time - last_time; // Время до этого события
+            double event_real_time = event.time * delta_time;
+            double delta = event_real_time - last_time;
 
-            // 2. Двигаем всех собак на `delta` времени
             for (const auto& [dog_id, dog] : dogs_) {
                 MovePlayer(dog_id, delta);
             }
 
-            // 3. Удаляем предмет после его сбора
-            if (event.item_id < loots_.size()) {  // Защита от выхода за границы
-                loots_.erase(loots_.begin() + event.item_id);
+            if (event.item_id < loots_.size()) {
+                int loot_id = std::get<0>(loots_[event.item_id]);
+                int loot_type = std::get<1>(loots_[event.item_id]);
+
+                auto& player = dogs_.at(event.gatherer_id);
+                if (player->GetBag().size() < bag_capacity_) {
+                    player->AddToBag(loot_id, loot_type);
+                    loots_.erase(loots_.begin() + event.item_id);
+                }
             }
 
-            last_time = event_real_time; // Обновляем последний обработанный момент времени
+            for (auto& [dog_id, dog] : dogs_) {
+                for (const auto& office : map_.GetOffices()) {
+                    double dist = std::sqrt(
+                        std::pow(dog->GetPosition().x - office.GetPosition().x, 2) +
+                        std::pow(dog->GetPosition().y - office.GetPosition().y, 2)
+                    );
+
+                    if (dist <= (0.5 / 2 + 0.6 / 2)) {
+                        int total_score = 0;
+                        for (const auto& item : dog->GetBag()) {
+                            int loot_type = item.second;
+                            if (lootId_to_value_.count(loot_type)) {
+                                total_score += lootId_to_value_.at(loot_type);
+                            }
+                        }
+                        dog->AddScore(total_score);
+                        dog->ClearBag();
+                    }
+                }
+            }
+
+            last_time = event_real_time;
         }
 
-        // 4. Двигаем собак на оставшееся время после всех событий
         double remaining_time = delta_time - last_time;
         for (const auto& [dog_id, dog] : dogs_) {
             MovePlayer(dog_id, remaining_time);
         }
     }
 
-    /* void GameSession::Tick(double delta_time) {
-        for (const auto& [dog_id, dog]: dogs_) {
-            MovePlayer(dog_id, delta_time);
-        }
-    } */
 
     Pos GameSession::CalculateNewPosition(const Pos& position, const Speed& speed, double delta_time) {
         Pos result{};
@@ -436,7 +486,7 @@ using namespace std::literals;
 
     void GameSession::GenerateLoot(int count, int loot_types_count) {
         while (loots_.size() < dogs_.size() && count > 0) {
-            loots_.push_back({rand() % loot_types_count, GenerateRandomRoadPosition()});
+            loots_.push_back({loots_.size(), rand() % loot_types_count, GenerateRandomRoadPosition()});
             --count;
         }
     }
@@ -489,18 +539,6 @@ using namespace std::literals;
         }
 
         return CreateGameSession(map_id);
-    }
-
-    std::shared_ptr<GameSession> SessionService::CreateGameSession(Map::Id map_id) {
-        auto result = std::make_shared<GameSession>(
-            common_data_.maps_[common_data_.map_id_to_index_[map_id]]
-        );
-        int index = common_data_.sessions_.size();
-        common_data_.sessions_.push_back(result);
-        common_data_.game_sessions_id_to_index_[result->GetSessionId()] = index;
-        common_data_.mapId_to_session_index_[map_id] = result->GetSessionId();
-
-        return result;
     }
 
     void SessionService::Tick(double delta_time) {

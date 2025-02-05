@@ -113,7 +113,8 @@ namespace app {
     const std::string Application::GetSerializedGameState(const Token& token) const {
         auto game_session = players_.GetPlayerByToken(token)->GetGameSession();
         std::vector<model::State> states = game_session->GetPlayersUnitStates();
-        const std::vector<std::pair<int, model::Pos>> lost_objects = game_session->GetLostObjects();
+        const std::vector<std::tuple<int, int, model::Pos>> 
+            lost_objects = game_session->GetLostObjects();
 
         return json_loader::StateSerializer::SerializeStates(states, lost_objects);
     }
