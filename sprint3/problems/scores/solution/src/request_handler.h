@@ -259,17 +259,17 @@ namespace http_handler {
                                 http::request<Body, http::basic_fields<Allocator>>&& req, Send&& send) {
         if (static_cast<std::string>(req.target()) != "/favicon.ico"){
             LogRequest(req);
-            auto t1 = clock();
+            auto t1 = std::chrono::steady_clock::now();
             request_handler_->operator()(std::move(req), [send = std::forward<Send>(send), this, t1]
                 (ResponseVariant&& response) {
                 auto empty_body_response = this->CopyResponseWithoutBody(response);
                 std::visit([&send](auto&& result){
                     send(std::forward<decltype(result)>(result));
                 }, response);
-                auto t2 = clock();
-                this->LogResponse(empty_body_response, static_cast<int>(t2 - t1));
+                auto t2 = std::chrono::steady_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+                this->LogResponse(empty_body_response, static_cast<int>(duration));
             });
-
         }
     }
 

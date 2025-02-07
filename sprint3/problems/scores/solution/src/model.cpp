@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <cassert>
+#include <iostream>
 
 namespace model {
 using namespace std::literals;
@@ -363,28 +364,31 @@ using namespace std::literals;
                 }
             }
 
-            for (auto& [dog_id, dog] : dogs_) {
-                for (const auto& office : map_.GetOffices()) {
-                    double dist = std::sqrt(
-                        std::pow(dog->GetPosition().x - office.GetPosition().x, 2) +
-                        std::pow(dog->GetPosition().y - office.GetPosition().y, 2)
-                    );
+            last_time = event_real_time;
+        }
 
-                    if (dist <= (0.5 / 2 + 0.6 / 2)) {
-                        int total_score = 0;
-                        for (const auto& item : dog->GetBag()) {
-                            int loot_type = item.second;
-                            if (lootId_to_value_.count(loot_type)) {
-                                total_score += lootId_to_value_.at(loot_type);
-                            }
+        // Проверяем сдачу предметов в офис вне цикла обработки событий
+        for (auto& [dog_id, dog] : dogs_) {
+            for (const auto& office : map_.GetOffices()) {
+                double dist = std::sqrt(
+                    std::pow(dog->GetPosition().x - office.GetPosition().x, 2) +
+                    std::pow(dog->GetPosition().y - office.GetPosition().y, 2)
+                );
+
+                // std::cout << "Dog " << dog_id << " distance to office: " << dist << std::endl;
+
+                if (dist <= (0.5 / 2 + 0.6 / 2)) {
+                    int total_score = 0;
+                    for (const auto& item : dog->GetBag()) {
+                        int loot_type = item.second;
+                        if (lootId_to_value_.count(loot_type)) {
+                            total_score += lootId_to_value_.at(loot_type);
                         }
-                        dog->AddScore(total_score);
-                        dog->ClearBag();
                     }
+                    dog->AddScore(total_score);
+                    dog->ClearBag();
                 }
             }
-
-            last_time = event_real_time;
         }
 
         double remaining_time = delta_time - last_time;
@@ -392,6 +396,7 @@ using namespace std::literals;
             MovePlayer(dog_id, remaining_time);
         }
     }
+
 
 
     Pos GameSession::CalculateNewPosition(const Pos& position, const Speed& speed, double delta_time) {
