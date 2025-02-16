@@ -63,8 +63,8 @@ namespace json_loader {
         return maps;
     }
 
-    MapLootTypes ParseLootTypes(const json::value& obj) {
-        MapLootTypes result;
+    model::CommonData::MapLootTypes ParseLootTypes(const json::value& obj) {
+        model::CommonData::MapLootTypes result;
         json::array maps = obj.at(json_keys::MAPS).as_array();
         for (const json::value& map : maps) {
             json::object obj = map.as_object();
@@ -314,11 +314,11 @@ namespace json_loader {
 
 
 
-    json::object StateSerializer::SerializeSingleLostObject(const std::tuple<int, int, model::Pos> lost_object) {
+    json::object StateSerializer::SerializeSingleLostObject(const model::GameSession::LostObject lost_object) {
         json::object lost_obj;
 
-        lost_obj[json_keys::TYPE] = std::get<1>(lost_object);
-        lost_obj[json_keys::POS] = SerializePoint(std::get<2>(lost_object));
+        lost_obj[json_keys::TYPE] = lost_object.type;
+        lost_obj[json_keys::POS] = SerializePoint(lost_object.position);
 
         return lost_obj;
     }
@@ -404,7 +404,7 @@ namespace json_loader {
             game.GetMapService().AddMap(std::move(map));
         }
 
-        MapLootTypes loot_types = json_loader::ParseLootTypes(config);
+        model::CommonData::MapLootTypes loot_types = json_loader::ParseLootTypes(config);
         game.GetLootService().ConfigureLootTypes(loot_types);
 
         return game;

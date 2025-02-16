@@ -1,4 +1,5 @@
 #pragma once
+#include "extra_data.h"
 #include "tagged.h"
 #include "util.h"
 
@@ -11,6 +12,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 #include <random>
 #include <vector>
@@ -23,7 +25,6 @@ const double EPSILON = 1e-9;
 using namespace std::chrono_literals;
 
 namespace model {
-
     template<typename KeyType, typename ValueType>
     std::pair<KeyType, ValueType> 
     GetElementByIndex(const std::unordered_map<KeyType, ValueType>& map, size_t index) {
@@ -270,9 +271,15 @@ namespace model {
 
     class GameSession {
     public:
+        struct LostObject {
+            uint64_t id;
+            uint64_t type;
+            model::Pos position;
+        };
+
         using Id = uint64_t;
         using Dogs = std::unordered_map<Dog::Id, std::shared_ptr<Dog>>;
-        using LostObjects = std::vector<std::tuple<int, int, Pos>>;
+        using LostObjects = std::vector<LostObject>;
     public:
         GameSession(const Map& map, std::unordered_map<int, int> loot_values);
 
@@ -318,6 +325,25 @@ namespace model {
             }
         };
 
+        std::unordered_map<Dog::Id, Pos> 
+        ComputeNewPositions(double delta_time);
+
+        std::vector<collision_detector::GatheringEvent> 
+        DetectGatheringEvents(double delta_time);
+
+        std::unordered_set<size_t> ProcessLootCollection();
+
+        std::unordered_set<size_t> 
+        ProcessLootCollection(const std::vector<collision_detector::GatheringEvent>& events, 
+                              double delta_time);
+
+        void ProcessLootDelivery();
+
+        void MoveRemainingPlayers(double delta_time, 
+                                  const std::vector<collision_detector::GatheringEvent>& events);
+        
+        void RemoveCollectedLoot(const std::unordered_set<size_t>& collected_loot_ids);
+
         double GenerateRandomDouble(double from, double to);
 
         int GenerateRandomInt(int from, int to);
@@ -348,6 +374,7 @@ namespace model {
         size_t bag_capacity_;
 
         static inline Id general_id_{0};
+        static inline uint64_t lost_object_id_{0};
     };
 
     struct CommonData {

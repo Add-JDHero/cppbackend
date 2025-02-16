@@ -235,7 +235,7 @@ using namespace std::literals;
 
     const std::vector<State> GameSession::GetPlayersUnitStates() const {
         std::vector<State> dogs;
-        for (const auto& [dog_id, dog]: dogs_) {
+        for (const auto& dog: dogs_vector_) {
             dogs.push_back(dog->GetState());
         }
 
@@ -316,7 +316,7 @@ using namespace std::literals;
 
     std::vector<collision_detector::Gatherer> GameSession::GetGatherers(double delta_time) const {
         std::vector<collision_detector::Gatherer> gatherers;
-        for (const auto& [dog_id, dog] : dogs_) {
+        for (const auto& dog : dogs_vector_) {
             geom::Point2D start(dog->GetPosition().x, dog->GetPosition().y);
             geom::Point2D end(start.x + dog->GetSpeed().x * delta_time, 
                             start.y + dog->GetSpeed().y * delta_time);
@@ -330,21 +330,35 @@ using namespace std::literals;
         std::vector<collision_detector::Item> items;
         for (const auto& loot : loots_) {
             items.push_back({
-                geom::Point2D(std::get<2>(loot).x, std::get<2>(loot).y), // Координаты предмета
+                geom::Point2D(loot.position.x, loot.position.y), // Координаты предмета
                 0.0 // Ширина предмета (нулевая)
             });
         }
         return items;
     }
 
-    void GameSession::Tick(double delta_time) {
+    std::unordered_map<Dog::Id, Pos> GameSession::ComputeNewPositions(double delta_time) {
+        std::unordered_map<Dog::Id, Pos> new_positions;
+        for (const auto& [dog_id, dog] : dogs_) {
+            new_positions[dog_id] = CalculateNewPosition(dog->GetPosition(), dog->GetSpeed(), delta_time);
+        }
+        return new_positions;
+    }
+
+    std::vector<collision_detector::GatheringEvent> 
+    GameSession::DetectGatheringEvents(double delta_time) {
         using namespace collision_detector;
+        return FindGatherEvents(
+            VectorItemGathererProvider(GetItems(), 
+            GetGatherers(delta_time)));
+    }
 
-        std::vector<GatheringEvent> events = FindGatherEvents(
-            VectorItemGathererProvider(GetItems(), GetGatherers(delta_time))
-        );
-
+    std::unordered_set<size_t> 
+    GameSession::ProcessLootCollection(const std::vector<collision_detector::GatheringEvent>& events, 
+                                       double delta_time) {
+        std::unordered_set<size_t> collected_loot_ids;
         double last_time = 0.0;
+
         for (const auto& event : events) {
             double event_real_time = event.time * delta_time;
             double delta = event_real_time - last_time;
@@ -353,21 +367,33 @@ using namespace std::literals;
                 MovePlayer(dog_id, delta);
             }
 
-            if (event.item_id < loots_.size()) {
-                int loot_id = std::get<0>(loots_[event.item_id]);
-                int loot_type = std::get<1>(loots_[event.item_id]);
-
-                auto& player = dogs_.at(event.gatherer_id);
+            if (collected_loot_ids.count(event.item_id) == 0 && event.item_id < loots_.size()) {
+                auto& player = dogs_vector_.at(event.gatherer_id);
                 if (player->GetBag().size() < bag_capacity_) {
+                    int loot_id = loots_[event.item_id].id;
+                    int loot_type = loots_[event.item_id].type;
                     player->AddToBag(loot_id, loot_type);
-                    loots_.erase(loots_.begin() + event.item_id);
+                    collected_loot_ids.insert(event.item_id);
                 }
             }
 
             last_time = event_real_time;
         }
 
-        // Проверяем сдачу предметов в офис вне цикла обработки событий
+        return collected_loot_ids;
+    }
+
+    void GameSession::RemoveCollectedLoot(const std::unordered_set<size_t>& collected_loot_ids) {
+        std::vector<LostObject> new_loots;
+        for (size_t i = 0; i < loots_.size(); ++i) {
+            if (!collected_loot_ids.count(i)) {
+                new_loots.push_back(loots_[i]);
+            }
+        }
+        loots_ = std::move(new_loots);
+    }
+
+    void GameSession::ProcessLootDelivery() {
         for (auto& [dog_id, dog] : dogs_) {
             for (const auto& office : map_.GetOffices()) {
                 double dist = std::sqrt(
@@ -375,9 +401,7 @@ using namespace std::literals;
                     std::pow(dog->GetPosition().y - office.GetPosition().y, 2)
                 );
 
-                // std::cout << "Dog " << dog_id << " distance to office: " << dist << std::endl;
-
-                if (dist <= (0.5 / 2 + 0.6 / 2)) {
+                if (dist <= (0.5 / 2 + 0.6 / 2)) { // Условие сдачи предметов
                     int total_score = 0;
                     for (const auto& item : dog->GetBag()) {
                         int loot_type = item.second;
@@ -390,12 +414,43 @@ using namespace std::literals;
                 }
             }
         }
+    }
+
+    void GameSession::MoveRemainingPlayers(double delta_time, 
+        const std::vector<collision_detector::GatheringEvent>& events) {
+        double last_time = 0.0;
+        if (!events.empty()) {
+            last_time = events.back().time * delta_time;
+        }
 
         double remaining_time = delta_time - last_time;
         for (const auto& [dog_id, dog] : dogs_) {
             MovePlayer(dog_id, remaining_time);
         }
     }
+    
+    void GameSession::Tick(double delta_time) {
+        using namespace collision_detector;
+
+        // 1. Перемещаем игроков
+        std::unordered_map<Dog::Id, Pos> new_positions = ComputeNewPositions(delta_time);
+
+        // 2. Определяем события сбора предметов
+        std::vector<GatheringEvent> events = DetectGatheringEvents(delta_time);
+
+        // 3. Обрабатываем сбор предметов
+        std::unordered_set<size_t> collected_loot_ids = ProcessLootCollection(events, delta_time);
+
+        // 4. Удаляем собранные предметы
+        RemoveCollectedLoot(collected_loot_ids);
+
+        // 5. Обрабатываем сдачу лута в офисах
+        ProcessLootDelivery();
+
+        // 6. Двигаем игроков на оставшееся время
+        MoveRemainingPlayers(delta_time, events);
+    }
+
 
 
 
@@ -491,7 +546,11 @@ using namespace std::literals;
 
     void GameSession::GenerateLoot(int count, int loot_types_count) {
         while (loots_.size() < dogs_.size() && count > 0) {
-            loots_.push_back({loots_.size(), rand() % loot_types_count, GenerateRandomRoadPosition()});
+            loots_.push_back(
+                LostObject{.id = lost_object_id_++, 
+                             .type = static_cast<uint64_t>(rand() % loot_types_count), 
+                             .position = GenerateRandomRoadPosition()}
+                );
             --count;
         }
     }
@@ -522,7 +581,7 @@ using namespace std::literals;
         default_tick_time_ = delta_time;
     }
 
-    void LootService::ConfigureLootTypes(MapLootTypes loot_types) {
+    void LootService::ConfigureLootTypes(CommonData::MapLootTypes loot_types) {
         common_data_.mapId_to_lootTypes_ = std::move(loot_types);
     }
 

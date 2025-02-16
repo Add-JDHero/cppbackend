@@ -15,7 +15,7 @@ namespace json_loader {
     /* model::CommonData::MapLootTypes
     ExtractLootTypes(const MapLootTypes& loot_types); */
 
-    MapLootTypes ParseLootTypes(const json::value& obj);
+    model::CommonData::MapLootTypes ParseLootTypes(const json::value& obj);
 
     loot_gen::LootGeneratorConfig ParseLootGeneratorConfig(const json::object& obj);
 
@@ -49,7 +49,7 @@ namespace json_loader {
         static std::string SerializeStates(const std::vector<model::State>& states,
                                            const model::GameSession::LostObjects& lost_objects);
         static json::object SerializeSingleState(const model::State& state);
-        static json::object SerializeSingleLostObject(const std::tuple<int, int, model::Pos> lost_object);
+        static json::object SerializeSingleLostObject(const model::GameSession::LostObject lost_object);
 
     private:
         static json::array SerializePoint(const model::Pos& point);

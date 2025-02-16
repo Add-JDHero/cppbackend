@@ -1,6 +1,7 @@
 #include "application.h"
 #include "handlers.h"
 #include "json_loader.h"
+#include "model.h"
 #include "player.h"
 #include "type_declarations.h"
 #include <boost/json/object.hpp>
@@ -113,7 +114,7 @@ namespace app {
     const std::string Application::GetSerializedGameState(const Token& token) const {
         auto game_session = players_.GetPlayerByToken(token)->GetGameSession();
         std::vector<model::State> states = game_session->GetPlayersUnitStates();
-        const std::vector<std::tuple<int, int, model::Pos>> 
+        const model::GameSession::LostObjects 
             lost_objects = game_session->GetLostObjects();
 
         return json_loader::StateSerializer::SerializeStates(states, lost_objects);
