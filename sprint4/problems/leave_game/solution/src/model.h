@@ -312,6 +312,8 @@ namespace model {
         void StopPlayer(Dog::Id id);
 
         void Tick(double delta_time);
+
+        void RemoveDog(Dog::Id id);
     
     private:
 

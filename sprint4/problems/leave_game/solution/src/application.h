@@ -16,7 +16,6 @@
 #include <boost/beast/http.hpp>
 
 
-
 namespace app {
 
     namespace detail {
@@ -30,6 +29,16 @@ namespace app {
         PlayerTokens() = default;
 
         Token AddPlayer(std::shared_ptr<Player::Player> player);
+
+        Token FindTokenByPlayer(std::shared_ptr<Player::Player> player) {
+            for (const auto& [token, stored_player] : token_to_player_) {
+                if (stored_player == player) {
+                    return token;
+                }
+            }
+
+            return {};
+        } 
 
         std::shared_ptr<Player::Player> FindPlayerByToken(const Token& token) const;
 
@@ -57,6 +66,10 @@ namespace app {
         std::shared_ptr<Player::Player> GetPlayerByToken(const Token& token) const;
 
         std::shared_ptr<Player::Player> FindByDogAndMapId(model::Dog::Id dog_id, model::Map::Id map_id);
+
+        void Remove(model::Dog::Id dog_id, model::Map::Id map_id);
+
+        Token FindTokenByPlayer(std::shared_ptr<Player::Player> player);
 
     private:
         PlayerTokens player_tokens_;
@@ -88,6 +101,20 @@ namespace app {
     private:
 
         const std::vector<std::string> GetPlayersList(const Token& token) const;
+
+        std::shared_ptr<Player::Player> 
+        FindExistingPlayer(model::Dog::Id dog_id, model::Map::Id map_id);
+
+        void RemovePlayerFromSession(std::shared_ptr<Player::Player> player, 
+                                    std::shared_ptr<model::GameSession> session);
+
+        Token HandleExistingPlayer(std::shared_ptr<Player::Player> player, 
+                                   std::shared_ptr<model::GameSession> new_session);
+
+        Token CreateNewPlayer(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> session);
+
+        Token FindTokenByPlayer(std::shared_ptr<Player::Player> player);
+
 
 		model::Game& game_;
 		Players players_;

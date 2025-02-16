@@ -216,9 +216,12 @@ using namespace std::literals;
     }
 
     void GameSession::AddDog(std::shared_ptr<Dog> dog) {
-        dogs_.insert({dog->GetId(), dog});
-        dogs_vector_.push_back(dog);
+        if (dogs_.count(dog->GetId()) == 0) {
+            dogs_.insert({dog->GetId(), dog});
+            dogs_vector_.push_back(dog);
+        }
     }
+
 
     const GameSession::Dogs& GameSession::GetDogs() const {
         return dogs_;
@@ -451,7 +454,14 @@ using namespace std::literals;
         MoveRemainingPlayers(delta_time, events);
     }
 
+    void GameSession::RemoveDog(Dog::Id id) {
+        if (dogs_.count(id) == 0) return; // Собака уже удалена
 
+        dogs_.erase(id);
+        auto it = std::remove_if(dogs_vector_.begin(), dogs_vector_.end(),
+                                [id](const auto& dog) { return dog->GetId() == id; });
+        dogs_vector_.erase(it, dogs_vector_.end());
+    }
 
 
     Pos GameSession::CalculateNewPosition(const Pos& position, const Speed& speed, double delta_time) {
