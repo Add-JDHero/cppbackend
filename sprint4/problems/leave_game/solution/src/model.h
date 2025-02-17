@@ -43,7 +43,6 @@ namespace model {
     
     enum class Direction {NORTH, SOUTH, WEST, EAST, DEFAULT};
 
-
     struct Pos {
         double x, y;
 
@@ -241,6 +240,8 @@ namespace model {
         const std::vector<std::pair<int, int>>& GetBag() const {
             return state_.bag;
         }
+
+        void SetRandomPosition(Pos pos) { state_.position = pos; }
 
         void SetBagCapacity(size_t capacity) {
             bag_capacity_ = capacity;

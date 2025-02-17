@@ -96,6 +96,7 @@ using namespace std::literals;
             // Удаляем офис из вектора, если не удалось вставить в unordered_map
             offices_.pop_back();
             throw;
+            throw;
         }
     }
     
@@ -217,6 +218,7 @@ using namespace std::literals;
 
     void GameSession::AddDog(std::shared_ptr<Dog> dog) {
         if (dogs_.count(dog->GetId()) == 0) {
+            dog->SetRandomPosition(GenerateRandomRoadPosition());
             dogs_.insert({dog->GetId(), dog});
             dogs_vector_.push_back(dog);
         }
