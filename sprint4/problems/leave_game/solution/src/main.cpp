@@ -11,6 +11,7 @@
 #include "extra_data.h"
 
 #include <boost/asio/io_context.hpp>
+#include <chrono>
 #include <iostream>
 #include <thread>
 #include <boost/asio/signal_set.hpp>
@@ -64,11 +65,12 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        double tick_time = static_cast<double>(arg.period) / static_cast<double>(1000);
+        std::chrono::milliseconds tick_time = std::chrono::milliseconds(static_cast<int>(arg.period));
 
         // 1. Загружаем карту из файла и строим модель игры
         model::Game game = json_loader::LoadGame(arg.config);
-        game.SetDefaultTickTime(tick_time);
+
+        game.SetDefaultTickTime(static_cast<double>(tick_time.count()) / 1000.0);
 
         // model::GameSession::SetDefaultTickTime(tick_time);
         app::Application app(game);
@@ -106,7 +108,7 @@ int main(int argc, const char* argv[]) {
         auto ticker = 
             std::make_shared<game_time::Ticker>(strand, ms,
             [&game](std::chrono::milliseconds delta) { 
-                game.GetEngine().Tick(static_cast<double>(delta.count()) / static_cast<double>(1000)); 
+                game.GetEngine().Tick(delta); 
             }
         );
         ticker->Start();

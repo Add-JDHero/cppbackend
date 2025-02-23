@@ -617,9 +617,9 @@ using namespace std::literals;
         return CreateGameSession(map_id);
     }
 
-    void SessionService::Tick(double delta_time) {
+    void SessionService::Tick(std::chrono::milliseconds delta_time) {
         for (const auto& session: common_data_.sessions_) {
-            session->Tick(delta_time);
+            session->Tick(static_cast<double>(delta_time.count()) / 1000.0);
 
             // GenerateLoot(session, delta_time);
         }
@@ -632,7 +632,7 @@ using namespace std::literals;
     void LootService::GenerateLoot(double delta_time) {
         unsigned dogs_count = /* session->GetDogs().size() */ 5;
         std::chrono::milliseconds interval = 
-            std::chrono::milliseconds(static_cast<int>(delta_time * 1000));
+            std::chrono::milliseconds(static_cast<int>(delta_time));
 
         for (const auto& session : common_data_.sessions_) {
             unsigned loot_count = session->GetLootCount();

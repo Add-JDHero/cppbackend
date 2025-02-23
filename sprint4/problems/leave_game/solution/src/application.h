@@ -2,9 +2,11 @@
 
 #include "sdk.h"
 #include "type_declarations.h"
+#include "infrastructure.h"
 #include "player.h"
 #include "model.h"
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <random>
@@ -17,6 +19,8 @@
 
 
 namespace app {
+
+    using milliseconds = std::chrono::milliseconds;
 
     namespace detail {
         struct TokenTag {};
@@ -81,7 +85,9 @@ namespace app {
     class Application {
     public:
         explicit Application(model::Game& game);
-        
+
+        void SetApplicationListener(ApplicationListener& listener);
+
         const std::string GetSerializedPlayersList(const Token& token) const;
         const std::string GetSerializedGameState(const Token& token) const;
 
@@ -96,7 +102,7 @@ namespace app {
         Token AddPlayer(std::shared_ptr<model::Dog> dog, 
                         std::shared_ptr<model::GameSession> session);
 
-        void Tick(double delta_time) const;
+        void Tick(milliseconds delta_time) const;
 
     private:
 
@@ -118,5 +124,6 @@ namespace app {
 
 		model::Game& game_;
 		Players players_;
+        ApplicationListener* listener_ = nullptr;
     };
 }

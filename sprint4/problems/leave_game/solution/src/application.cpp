@@ -151,6 +151,10 @@ namespace app {
         return players_list;
     }
 
+    void Application::SetApplicationListener(ApplicationListener& listener) {
+        listener_ = &listener;
+    }
+
     const std::string Application::GetSerializedPlayersList(const Token& token) const {
         std::vector<std::string> names = GetPlayersList(token);
         boost::json::object players_json;
@@ -185,7 +189,11 @@ namespace app {
         player->MovePlayer(direction);
     }
 
-    void Application::Tick(double delta_time) const {
-        game_.GetEngine().Tick(delta_time / 1000);
+    void Application::Tick(milliseconds delta_time) const {
+        game_.GetEngine().Tick(delta_time);
+
+        if (listener_) {
+            listener_->OnTick(delta_time / 1000);
+        }
     } 
 }

@@ -439,7 +439,7 @@ namespace model {
         std::shared_ptr<GameSession> 
         FindGameSessionBySessionId(GameSession::Id session_id);
 
-        void Tick(double delta_time);
+        void Tick(std::chrono::milliseconds delta_time);
 
     private:
         CommonData& common_data_;
@@ -473,9 +473,9 @@ namespace model {
             , loot_service_(loot_service) {
         }
 
-        void Tick(double delta_time) {
+        void Tick(std::chrono::milliseconds delta_time) {
             session_service_.Tick(delta_time);
-            loot_service_.GenerateLoot(delta_time);
+            loot_service_.GenerateLoot(delta_time.count());
         }
 
     private:

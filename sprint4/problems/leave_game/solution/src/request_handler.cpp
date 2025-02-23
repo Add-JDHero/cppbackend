@@ -4,6 +4,7 @@
 
 #include "extra_data.h"
 
+#include <chrono>
 #include <cstdint>
 #include <exception>
 #include <memory>
@@ -510,7 +511,8 @@ namespace http_handler {
             return optional.value();
         }
 
-        app_.Tick(milliseconds);
+        std::chrono::milliseconds delta_time{milliseconds};
+        app_.Tick(delta_time);
 
         std::string response_body = "{}";
         return json_response(http::status::ok, response_body, ContentType::APP_JSON);
