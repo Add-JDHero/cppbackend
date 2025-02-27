@@ -18,7 +18,9 @@
 #include <boost/json.hpp>
 #include <boost/beast/http.hpp>
 
-
+namespace serialization {
+    class SerializingListener;
+}
 
 namespace app {
 
@@ -139,7 +141,7 @@ namespace app {
 }
 
 namespace serialization {
-    class SerializingListener {
+    class SerializingListener : public ApplicationListener {
     public:
         SerializingListener(app::Application& app, 
                             const std::string& state_file, 

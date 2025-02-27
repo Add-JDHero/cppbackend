@@ -77,21 +77,23 @@ int main(int argc, const char* argv[]) {
 
         serialization::SerializingListener serializer(app, "server_state.txt", std::chrono::milliseconds{3500});
 
+        app.SetApplicationListener(serializer);
+
         // 2. Инициализируем io_context
         const unsigned num_threads = std::thread::hardware_concurrency();
         net::io_context ioc(num_threads);
         net::strand strand = net::make_strand(ioc);
 
+
+
         // 3. Добавляем асинхронный обработчик сигналов SIGINT и SIGTERM
         net::signal_set signals(ioc, SIGINT, SIGTERM);
+        struct sigaction sa;
+        sigaction(SIGINT, nullptr, &sa);
         signals.async_wait([&ioc, &app](const sys::error_code& ec, [[maybe_unused]] int signal_number) {
             if (!ec) {
                 std::cout << "Signal "sv << signal_number << " received"sv << std::endl;
-                
-                app.SerializeGame();
 
-                std::cout << "Game state saved. Stopping server..."sv << std::endl;
-                
                 ioc.stop();
             }
         });
@@ -99,6 +101,7 @@ int main(int argc, const char* argv[]) {
         // 4. Создаём обработчик HTTP-запросов и связываем его с моделью игры
         auto handler = 
             std::make_shared<http_handler::RequestHandler>(game, strand, arg.www_root, app);
+
         http_handler::LoggingRequestHandler logging_handler(handler);
 
         // 5. Запустить обработчик HTTP-запросов, делегируя их обработчику запросов
@@ -114,8 +117,8 @@ int main(int argc, const char* argv[]) {
         auto ms = std::chrono::milliseconds(static_cast<int>(arg.period));
         auto ticker = 
             std::make_shared<game_time::Ticker>(strand, ms,
-            [&game](std::chrono::milliseconds delta) { 
-                game.GetEngine().Tick(delta); 
+            [&app](std::chrono::milliseconds delta) { 
+                app.Tick(delta); 
             }
         );
         ticker->Start();
@@ -125,6 +128,10 @@ int main(int argc, const char* argv[]) {
             ioc.run(); 
         });
 
+
+        app.SerializeGame();
+
+        BOOST_LOG_TRIVIAL(info) << "Game state saved. Stopping server..."sv;
     } catch (const std::exception& ex) {
         ServerStopLog(EXIT_FAILURE, ex.what());
 

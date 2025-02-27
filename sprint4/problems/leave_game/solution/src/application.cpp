@@ -193,7 +193,7 @@ namespace app {
         game_.GetEngine().Tick(delta_time);
 
         if (listener_) {
-            listener_->OnTick(delta_time / 1000);
+            listener_->OnTick(delta_time);
         }
     } 
 }
