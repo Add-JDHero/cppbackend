@@ -79,13 +79,18 @@ namespace model {
         double x, y;
     };
 
+    struct FoundObject {
+        uint64_t id;
+        uint64_t type;
+    };
+
     struct State {
         using Id = uint64_t;
 
         Pos position{0, 0};
         Speed speed{0, 0};
         Direction direction{Direction::DEFAULT};
-        std::vector<std::pair<int, int>> bag;
+        std::vector<FoundObject> bag;
         int score = 0;
         Id id;
     };
@@ -142,7 +147,7 @@ namespace model {
     private:
         Rectangle bounds_;
     };
-
+ 
     class Office {
     public:
         using Id = util::Tagged<std::string, Office>;
@@ -201,7 +206,10 @@ namespace model {
         void AddOffice(Office office);
 
     private:
-        using OfficeIdToIndex = std::unordered_map<Office::Id, size_t, util::TaggedHasher<Office::Id>>;
+        using OfficeIdToIndex = 
+            std::unordered_map<Office::Id, 
+                               size_t, 
+                               util::TaggedHasher<Office::Id>>;
 
         Id id_;
         std::string name_;
@@ -220,6 +228,8 @@ namespace model {
     public:
         using Id = uint64_t;
 
+        Dog(State state, std::string name);
+
         Dog(std::string_view name);
 
         const Id GetId() const;
@@ -237,7 +247,7 @@ namespace model {
 
         void ClearBag() { state_.bag.clear(); }
 
-        const std::vector<std::pair<int, int>>& GetBag() const {
+        const std::vector<FoundObject>& GetBag() const {
             return state_.bag;
         }
 
@@ -281,6 +291,7 @@ namespace model {
         using Id = uint64_t;
         using Dogs = std::unordered_map<Dog::Id, std::shared_ptr<Dog>>;
         using LostObjects = std::vector<LostObject>;
+        using LootIdToValue = std::unordered_map<int, int>;
     public:
         GameSession(const Map& map, std::unordered_map<int, int> loot_values);
 
@@ -291,6 +302,7 @@ namespace model {
         const std::vector<std::string> GetPlayersNames() const;
         const std::vector<State> GetPlayersUnitStates() const;
         const LostObjects& GetLostObjects() const {return loots_; }
+        const LootIdToValue& GetLootValuesTable() const { return lootId_to_value_; }
 
         int GetLootValue(int loot_type) const;
 
@@ -370,7 +382,7 @@ namespace model {
         std::vector<std::shared_ptr<Dog>> dogs_vector_;
         std::unordered_map<int, Region> regions_;
 
-        std::unordered_map<int, int> lootId_to_value_;
+        LootIdToValue lootId_to_value_;
         LostObjects loots_;
         Id id_;
 
@@ -494,14 +506,18 @@ namespace model {
         }
 
         double GetDefaultDogSpeed() const;
+        double GetDefaultTickTime() const { return default_tick_time_; }
+        const CommonData& GetCommonData() const { return common_data_; }
 
         void SetDefaultTickTime(double delta_time);
         void SetDefaultDogSpeed(double default_speed);
+        void SetCommonData(const CommonData& data) { common_data_ = data; }
 
         GameEngine& GetEngine() { return engine_; }
         SessionService& GetSessionService() { return session_service_; }
         MapService& GetMapService() { return map_service_; }
         LootService& GetLootService() { return loot_service_; }
+
 
     private:
         CommonData common_data_;

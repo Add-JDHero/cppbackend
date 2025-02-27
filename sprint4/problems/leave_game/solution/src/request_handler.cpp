@@ -154,7 +154,8 @@ namespace http_handler {
         auto token_handler = std::make_shared<TokenHandler>(
             [this](const StringRequest& req, const JsonResponseHandler& json_response) 
             -> std::optional<StringResponse> {
-                if (auto optional = this->TokenHandler(req, json_response)) {
+                if (auto optional = 
+                    this->TokenHandler(req, json_response)) {
                     return optional;
                 }
 
@@ -168,8 +169,7 @@ namespace http_handler {
                 url::UrlParser parser(std::string(req.target()));
                 auto path_components = parser.GetComponents();
                 return this->GetMapsRequest(json_response);
-            }
-        ));
+            }));
 
         router_->AddRoute({"GET", "HEAD"}, "/api/v1/maps/:", 
             std::make_unique<HTTPResponseMaker>(
@@ -177,8 +177,7 @@ namespace http_handler {
                 url::UrlParser parser(std::string(req.target()));
                 auto map_id = parser.GetLastComponent();
                 return this->GetMapDetailsRequest(json_response, map_id);
-            }
-        ));
+            }));
 
         router_->AddRoute({"POST"}, "/api/v1/game/join", 
             std::make_shared<HTTPResponseMaker>(

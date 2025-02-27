@@ -50,6 +50,8 @@ add_executable(game_server
   src/geom.h
   src/collision_detector.h
   src/collision_detector.cpp
+  src/model_serialization.h
+  src/model_serialization.cpp
 )
 
 target_link_libraries(game_server CONAN_PKG::boost) 

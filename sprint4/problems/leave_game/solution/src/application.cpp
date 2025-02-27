@@ -197,3 +197,72 @@ namespace app {
         }
     } 
 }
+
+namespace serialization {
+
+    SerializingListener::SerializingListener(app::Application& app, 
+                                             const std::string& state_file, 
+                                             milliseconds save_period)
+        : app_(app)
+        , state_file_(state_file)
+        , save_period_(save_period) {
+    }
+
+    void SerializingListener::OnTick(milliseconds delta) {
+        time_since_last_save_ += delta;
+
+        if (time_since_last_save_ >= save_period_) {
+            SaveStateToFile();
+            time_since_last_save_ = milliseconds{0};
+        }
+    }
+
+void SerializingListener::SaveStateToFile() {
+    std::stringstream ss;
+    try {
+        boost::archive::text_oarchive oa{ss};
+        GameSer serialized_game = app_.SerializeGame();
+        oa << serialized_game;
+
+        std::string temp_file = state_file_ + ".tmp";
+        {
+            std::ofstream ofs(temp_file);
+            if (!ofs) {
+                throw std::runtime_error("Failed to open temporary state file for writing.");
+            }
+            ofs << ss.str();
+        }
+
+        std::filesystem::rename(temp_file, state_file_);
+        std::cout << "Game state saved to " << state_file_ << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Error saving game state: " << e.what() << std::endl;
+    }
+}
+
+void SerializingListener::LoadStateFromFile() {
+    if (!std::filesystem::exists(state_file_)) {
+        std::cout << "No previous state file found. Starting fresh." << std::endl;
+        return;
+    }
+
+    try {
+        std::ifstream ifs(state_file_);
+        if (!ifs) {
+            throw std::runtime_error("Failed to open state file for reading.");
+        }
+
+        boost::archive::text_iarchive ia{ifs};
+        GameSer serialized_game;
+        ia >> serialized_game;
+        
+        app_.LoadGameFromFile(std::move(serialized_game.Restore()));
+
+        std::cout << "Game state restored from " << state_file_ << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Error loading game state: " << e.what() << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+}

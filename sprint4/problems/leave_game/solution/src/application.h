@@ -1,5 +1,6 @@
 #pragma once
 
+#include "model_serialization.h"
 #include "sdk.h"
 #include "type_declarations.h"
 #include "infrastructure.h"
@@ -16,6 +17,7 @@
 #include <boost/functional/hash.hpp>
 #include <boost/json.hpp>
 #include <boost/beast/http.hpp>
+
 
 
 namespace app {
@@ -104,6 +106,14 @@ namespace app {
 
         void Tick(milliseconds delta_time) const;
 
+        serialization::GameSer SerializeGame() const { return serialization::GameSer(game_); }
+
+        void LoadGameFromFile(model::Game game) {
+            game_.SetCommonData(game.GetCommonData());
+            game_.SetDefaultDogSpeed(game.GetDefaultDogSpeed());
+            game_.SetDefaultTickTime(game.GetDefaultTickTime());
+        }
+
     private:
 
         const std::vector<std::string> GetPlayersList(const Token& token) const;
@@ -125,5 +135,25 @@ namespace app {
 		model::Game& game_;
 		Players players_;
         ApplicationListener* listener_ = nullptr;
+    };
+}
+
+namespace serialization {
+    class SerializingListener {
+    public:
+        SerializingListener(app::Application& app, 
+                            const std::string& state_file, 
+                            milliseconds save_period);
+
+        void OnTick(milliseconds delta);
+
+        void SaveStateToFile();
+        void LoadStateFromFile();
+
+    private:
+        app::Application& app_;
+        std::string state_file_;
+        milliseconds save_period_;
+        milliseconds time_since_last_save_{0};
     };
 }

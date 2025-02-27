@@ -75,6 +75,8 @@ int main(int argc, const char* argv[]) {
         // model::GameSession::SetDefaultTickTime(tick_time);
         app::Application app(game);
 
+        serialization::SerializingListener serializer(app, "server_state.txt", std::chrono::milliseconds{3500});
+
         // 2. Инициализируем io_context
         const unsigned num_threads = std::thread::hardware_concurrency();
         net::io_context ioc(num_threads);
@@ -82,9 +84,14 @@ int main(int argc, const char* argv[]) {
 
         // 3. Добавляем асинхронный обработчик сигналов SIGINT и SIGTERM
         net::signal_set signals(ioc, SIGINT, SIGTERM);
-        signals.async_wait([&ioc](const sys::error_code& ec, [[maybe_unused]] int signal_number) {
+        signals.async_wait([&ioc, &app](const sys::error_code& ec, [[maybe_unused]] int signal_number) {
             if (!ec) {
                 std::cout << "Signal "sv << signal_number << " received"sv << std::endl;
+                
+                app.SerializeGame();
+
+                std::cout << "Game state saved. Stopping server..."sv << std::endl;
+                
                 ioc.stop();
             }
         });

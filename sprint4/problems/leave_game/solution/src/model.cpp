@@ -100,6 +100,11 @@ using namespace std::literals;
         }
     }
     
+    Dog::Dog(State state, std::string name)
+        : state_(std::move(state))
+        , name_(std::move(name)) {
+        state_.id = general_id_++;
+    }
 
     Dog::Dog(std::string_view name) : name_(std::string(name)) {
         state_.id = general_id_++;
@@ -409,7 +414,7 @@ using namespace std::literals;
                 if (dist <= (0.5 / 2 + 0.6 / 2)) { // Условие сдачи предметов
                     int total_score = 0;
                     for (const auto& item : dog->GetBag()) {
-                        int loot_type = item.second;
+                        int loot_type = item.type;
                         if (lootId_to_value_.count(loot_type)) {
                             total_score += lootId_to_value_.at(loot_type);
                         }

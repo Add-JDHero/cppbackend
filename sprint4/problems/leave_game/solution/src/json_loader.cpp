@@ -303,8 +303,8 @@ namespace json_loader {
         json::array bag_json;
         for (const auto& item : state.bag) {
             json::object item_json;
-            item_json["id"] = item.first;
-            item_json["type"] = item.second;
+            item_json["id"] = item.id;
+            item_json["type"] = item.type;
             bag_json.push_back(item_json);
         }
         state_obj["bag"] = std::move(bag_json);
