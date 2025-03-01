@@ -111,9 +111,13 @@ namespace app {
         serialization::GameSer SerializeGame() const { return serialization::GameSer(game_); }
 
         void LoadGameFromFile(model::Game game) {
-            game_.SetCommonData(game.GetCommonData());
+            game_.SetCommonData(std::move(game.GetCommonData()));
             game_.SetDefaultDogSpeed(game.GetDefaultDogSpeed());
             game_.SetDefaultTickTime(game.GetDefaultTickTime());
+        }
+
+        void LoadGameFromFilie() {
+            listener_->LoadStateFromFile();
         }
 
     private:
@@ -147,10 +151,10 @@ namespace serialization {
                             const std::string& state_file, 
                             milliseconds save_period);
 
-        void OnTick(milliseconds delta);
+        void OnTick(milliseconds delta) override;
 
         void SaveStateToFile();
-        void LoadStateFromFile();
+        void LoadStateFromFile() override;
 
     private:
         app::Application& app_;

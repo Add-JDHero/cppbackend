@@ -241,11 +241,6 @@ void SerializingListener::SaveStateToFile() {
 }
 
 void SerializingListener::LoadStateFromFile() {
-    if (!std::filesystem::exists(state_file_)) {
-        std::cout << "No previous state file found. Starting fresh." << std::endl;
-        return;
-    }
-
     try {
         std::ifstream ifs(state_file_);
         if (!ifs) {

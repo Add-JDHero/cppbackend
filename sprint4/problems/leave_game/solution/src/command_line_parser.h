@@ -14,6 +14,7 @@ struct Args {
     unsigned int period = DEFAULT_TICK_PERIOD;
     std::string config;
     std::string www_root;
+    std::string state_file;
     bool random;
 };
 
@@ -34,7 +35,8 @@ struct Args {
         ("tick-period,t", po::value<unsigned int>(&args.period)->value_name("milliseconds"), "set tick period")  //
         ("config-file,c", po::value(&args.config)->value_name("file"), "set config file path")                   //
         ("www-root,w", po::value(&args.www_root)->value_name("dir"), "set static files root")                    //
-        ("randomize-spawn-points", po::value<bool>(&args.random), "spawn dogs at random positions");
+        ("randomize-spawn-points", po::value<bool>(&args.random), "spawn dogs at random positions")
+        ("state-file,s", po::value(&args.state_file)->value_name("state_file"), "set state file name");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);

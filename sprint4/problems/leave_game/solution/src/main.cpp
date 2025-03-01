@@ -12,6 +12,7 @@
 
 #include <boost/asio/io_context.hpp>
 #include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <thread>
 #include <boost/asio/signal_set.hpp>
@@ -75,21 +76,21 @@ int main(int argc, const char* argv[]) {
         // model::GameSession::SetDefaultTickTime(tick_time);
         app::Application app(game);
 
-        serialization::SerializingListener serializer(app, "server_state.txt", std::chrono::milliseconds{3500});
-
-        app.SetApplicationListener(serializer);
+        serialization::SerializingListener serializer(app, arg.state_file, std::chrono::milliseconds{3500});
+        if (arg.state_file != "") {
+            app.SetApplicationListener(serializer);
+            if (std::filesystem::exists(arg.state_file)) {
+                app.LoadGameFromFilie();
+            }
+        }
 
         // 2. Инициализируем io_context
         const unsigned num_threads = std::thread::hardware_concurrency();
         net::io_context ioc(num_threads);
         net::strand strand = net::make_strand(ioc);
 
-
-
         // 3. Добавляем асинхронный обработчик сигналов SIGINT и SIGTERM
         net::signal_set signals(ioc, SIGINT, SIGTERM);
-        struct sigaction sa;
-        sigaction(SIGINT, nullptr, &sa);
         signals.async_wait([&ioc, &app](const sys::error_code& ec, [[maybe_unused]] int signal_number) {
             if (!ec) {
                 std::cout << "Signal "sv << signal_number << " received"sv << std::endl;
@@ -118,7 +119,7 @@ int main(int argc, const char* argv[]) {
         auto ticker = 
             std::make_shared<game_time::Ticker>(strand, ms,
             [&app](std::chrono::milliseconds delta) { 
-                app.Tick(delta); 
+                app.Tick(delta / 1000); 
             }
         );
         ticker->Start();
@@ -127,7 +128,6 @@ int main(int argc, const char* argv[]) {
         RunWorkers(std::max(1u, num_threads), [&ioc] {
             ioc.run(); 
         });
-
 
         app.SerializeGame();
 

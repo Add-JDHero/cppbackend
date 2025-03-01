@@ -424,7 +424,7 @@ namespace model {
         using Maps = std::vector<Map>;
 
         MapService() = delete;
-        MapService(CommonData& data);
+        MapService(std::shared_ptr<CommonData> data);
 
         void AddMap(model::Map map);
         
@@ -432,7 +432,7 @@ namespace model {
         const Maps& GetMaps() const noexcept;
 
     private:
-        CommonData& common_data_;
+        std::shared_ptr<CommonData> common_data_;
     };
 
 
@@ -440,7 +440,7 @@ namespace model {
     public:
         using GameSessions = std::vector<std::shared_ptr<GameSession>>;
 
-        SessionService(CommonData& data);
+        SessionService(std::shared_ptr<CommonData> data);
 
         std::shared_ptr<model::GameSession> 
         CreateGameSession(model::Map::Id map_id);
@@ -454,12 +454,12 @@ namespace model {
         void Tick(std::chrono::milliseconds delta_time);
 
     private:
-        CommonData& common_data_;
+        std::shared_ptr<CommonData> common_data_;
     };
 
     class LootService {
     public:
-        explicit LootService(CommonData& data) : common_data_(data) {}
+        explicit LootService(std::shared_ptr<CommonData> data) : common_data_(data) {}
 
         void GenerateLoot(double delta_time);
 
@@ -468,11 +468,11 @@ namespace model {
         void ConfigureLootGenerator(double period, double probability);
 
         const CommonData::MapLootTypes& GetLootTypes() {
-            return common_data_.mapId_to_lootTypes_;
+            return common_data_->mapId_to_lootTypes_;
         }
 
     private:
-        CommonData& common_data_;
+        std::shared_ptr<CommonData> common_data_;
 
         loot_gen::LootGeneratorConfig loot_config_;
         loot_gen::LootGenerator loot_gen_{0ms, 0};
@@ -480,47 +480,52 @@ namespace model {
 
     class GameEngine {
     public:
-        GameEngine(SessionService& session_service, LootService& loot_service)
+        GameEngine(std::shared_ptr<SessionService> session_service, std::shared_ptr<LootService> loot_service)
             : session_service_(session_service)
             , loot_service_(loot_service) {
         }
 
         void Tick(std::chrono::milliseconds delta_time) {
-            session_service_.Tick(delta_time);
-            loot_service_.GenerateLoot(delta_time.count());
+            session_service_->Tick(delta_time);
+            loot_service_->GenerateLoot(delta_time.count());
         }
 
     private:
-        SessionService& session_service_;
-        LootService& loot_service_;
+        std::shared_ptr<SessionService> session_service_;
+        std::shared_ptr<LootService> loot_service_;
     };
 
     class Game {
     public:
         Game()
             : common_data_()
-            , session_service_(common_data_)
+            , session_service_(std::make_shared<SessionService>(common_data_))
             , map_service_(common_data_)
-            , loot_service_(common_data_)
-            , engine_(session_service_, loot_service_) {
+            , loot_service_(std::make_shared<LootService>(common_data_))
+            , engine_(
+                std::make_shared<SessionService>(session_service_), 
+                std::make_shared<LootService>(loot_service_)) {
         }
-
+ 
         double GetDefaultDogSpeed() const;
         double GetDefaultTickTime() const { return default_tick_time_; }
-        const CommonData& GetCommonData() const { return common_data_; }
+        const CommonData& GetCommonData() const { return *common_data_; }
 
         void SetDefaultTickTime(double delta_time);
         void SetDefaultDogSpeed(double default_speed);
-        void SetCommonData(const CommonData& data) { common_data_ = data; }
+        void SetCommonData(CommonData data) { 
+            common_data_ = std::make_shared<CommonData>(std::move(data));
+            map_service_ = MapService(common_data_);
+        }
 
         GameEngine& GetEngine() { return engine_; }
-        SessionService& GetSessionService() { return session_service_; }
+        SessionService& GetSessionService() { return *session_service_; }
         MapService& GetMapService() { return map_service_; }
-        LootService& GetLootService() { return loot_service_; }
+        LootService& GetLootService() { return *loot_service_; }
 
 
     private:
-        CommonData common_data_;
+        std::shared_ptr<CommonData> common_data_;
 
         double default_dog_speed_ = 1.0;
         double default_tick_time_ = 0;
@@ -528,8 +533,9 @@ namespace model {
         GameEngine engine_;
 
         MapService map_service_;
-        SessionService session_service_;
-        LootService loot_service_;
+        
+        std::shared_ptr<SessionService> session_service_;
+        std::shared_ptr<LootService> loot_service_;
     };
 
 }  // namespace model

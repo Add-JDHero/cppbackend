@@ -279,9 +279,15 @@ namespace serialization {
             ar & lost_objects_;
         }
 
-        [[nodiscard]] model::GameSession Restore() const {
-            model::Map map = map_.Restore();
-            model::GameSession session(map, lootId_to_value_);
+        [[nodiscard]] model::GameSession Restore(const model::CommonData& data) const {
+            model::Map restored_map = map_.Restore();
+            size_t map_index = data.map_id_to_index_.at(restored_map.GetId());
+
+            model::GameSession session(data.maps_[map_index], lootId_to_value_);
+
+            for (const auto& [id, dog] : dogs_) {
+                session.AddDog(std::make_shared<model::Dog>(dog->Restore()));
+            }
             return session;
         }
 
@@ -298,12 +304,13 @@ namespace serialization {
             : game_sessions_id_to_index_(data.game_sessions_id_to_index_)
             , mapId_to_session_index_(data.mapId_to_session_index_)
             , map_id_to_index_(data.map_id_to_index_) {
+            for (const auto& map : data.maps_) {
+                maps_.push_back(MapSer(map));
+            }
+
             for (const auto& session : data.sessions_) {
                 auto index = data.map_id_to_index_.at(session->GetMapId());
                 sessions_.emplace_back(*session, data.maps_[index]);
-            }
-            for (const auto& map : data.maps_) {
-                maps_.push_back(MapSer(map));
             }
 
             for (const auto& [map_id, loot_ptr] : data.mapId_to_lootTypes_) {
@@ -333,14 +340,17 @@ namespace serialization {
         [[nodiscard]] model::CommonData Restore() const {
             model::CommonData data;
 
-            for (const auto& session_ser_ptr : sessions_) {
-                data.sessions_.push_back(
-                    std::make_shared<model::GameSession>(session_ser_ptr.Restore()));
-            }
-
             for (const auto& map_ser : maps_) {
                 data.maps_.emplace_back(map_ser.Restore());
             }
+            data.map_id_to_index_ = map_id_to_index_;
+
+            for (const auto& session_ser_ptr : sessions_) {
+                auto session = session_ser_ptr.Restore(data);
+                data.sessions_.push_back(
+                    std::make_shared<model::GameSession>(session));
+            }
+
 
             data.game_sessions_id_to_index_ = game_sessions_id_to_index_;
             data.mapId_to_lootTypes_ = {};
@@ -352,7 +362,6 @@ namespace serialization {
                 data.mapId_to_lootTypes_[map_id] = std::move(json_array);
             }
             data.mapId_to_session_index_ = mapId_to_session_index_;
-            data.map_id_to_index_ = map_id_to_index_;
 
             return data;
         }
@@ -390,7 +399,7 @@ namespace serialization {
         [[nodiscard]] model::Game Restore() const {
             model::Game game;
 
-            game.SetCommonData(serialized_data_.Restore());
+            game.SetCommonData(std::move(serialized_data_.Restore()));
             game.SetDefaultDogSpeed(default_dog_speed_);
             game.SetDefaultTickTime(default_tick_time_);
 
