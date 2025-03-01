@@ -498,18 +498,16 @@ namespace model {
     class Game {
     public:
         Game()
-            : common_data_()
+            : common_data_(std::make_shared<CommonData>())
             , session_service_(std::make_shared<SessionService>(common_data_))
             , map_service_(common_data_)
             , loot_service_(std::make_shared<LootService>(common_data_))
-            , engine_(
-                std::make_shared<SessionService>(session_service_), 
-                std::make_shared<LootService>(loot_service_)) {
+            , engine_(session_service_, loot_service_) {
         }
  
         double GetDefaultDogSpeed() const;
         double GetDefaultTickTime() const { return default_tick_time_; }
-        const CommonData& GetCommonData() const { return *common_data_; }
+        CommonData& GetCommonData() const { return *common_data_; }
 
         void SetDefaultTickTime(double delta_time);
         void SetDefaultDogSpeed(double default_speed);
@@ -525,17 +523,16 @@ namespace model {
 
 
     private:
-        std::shared_ptr<CommonData> common_data_;
-
         double default_dog_speed_ = 1.0;
         double default_tick_time_ = 0;
 
-        GameEngine engine_;
+        std::shared_ptr<CommonData> common_data_;
 
         MapService map_service_;
         
         std::shared_ptr<SessionService> session_service_;
         std::shared_ptr<LootService> loot_service_;
+        GameEngine engine_;
     };
 
 }  // namespace model

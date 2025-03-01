@@ -77,7 +77,7 @@ int main(int argc, const char* argv[]) {
         app::Application app(game);
 
         serialization::SerializingListener serializer(app, arg.state_file, std::chrono::milliseconds{3500});
-        if (arg.state_file != "") {
+        if (!arg.state_file.empty()) {
             app.SetApplicationListener(serializer);
             if (std::filesystem::exists(arg.state_file)) {
                 app.LoadGameFromFilie();
@@ -119,7 +119,7 @@ int main(int argc, const char* argv[]) {
         auto ticker = 
             std::make_shared<game_time::Ticker>(strand, ms,
             [&app](std::chrono::milliseconds delta) { 
-                app.Tick(delta / 1000); 
+                app.Tick(delta); 
             }
         );
         ticker->Start();

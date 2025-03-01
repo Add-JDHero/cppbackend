@@ -331,7 +331,7 @@ namespace serialization {
         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
             ar & sessions_;
             ar & game_sessions_id_to_index_;
-            ar & mapId_to_lootTypes_;  // Теперь это std::vector<boost::json::value>
+            ar & mapId_to_lootTypes_;
             ar & mapId_to_session_index_;
             ar & maps_;
             ar & map_id_to_index_;

@@ -20,6 +20,7 @@ namespace Player {
     public:
         Player() = delete;
         Player(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> game_session);
+        
         model::Dog::Id GetDogId();
 
         void MovePlayer(std::string direction = "");
