@@ -2,6 +2,7 @@
 
 // #include "boost/beast/core/string_type.hpp"
 
+#include "application.h"
 #include "extra_data.h"
 
 #include <chrono>
@@ -280,13 +281,11 @@ namespace http_handler {
             return ErrorHandler::MakeNotFoundResponse(json_response, "mapNotFound", "Map not found");
         }
 
-        std::shared_ptr<model::Dog> dog = std::make_shared<model::Dog>(user_name);
-
-        app::Token token = app_.AddPlayer(dog, session);
+        app::Application::PlayerInfo pi = app_.AddPlayer(user_name, session);
 
         json::value value = {
-            { SpecialStrings::AUTH_TOKEN.data(), *token },
-            { SpecialStrings::PLAYER_ID.data(),  dog->GetId() }
+            { SpecialStrings::AUTH_TOKEN.data(), *pi.token },
+            { SpecialStrings::PLAYER_ID.data(),  pi.id }
         };
 
         std::string val = json::serialize(std::move(value));

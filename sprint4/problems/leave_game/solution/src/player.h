@@ -23,6 +23,10 @@ namespace Player {
         
         model::Dog::Id GetDogId();
 
+        const std::string& GetDogName() const {
+            return dog_->GetName();
+        }
+
         void MovePlayer(std::string direction = "");
 
         const std::shared_ptr<model::GameSession> GetGameSession() const;

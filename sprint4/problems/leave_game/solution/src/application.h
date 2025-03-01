@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <random>
 #include <algorithm>
 #include <unordered_map>
@@ -38,7 +39,7 @@ namespace app {
 
         Token AddPlayer(std::shared_ptr<Player::Player> player);
 
-        Token FindTokenByPlayer(std::shared_ptr<Player::Player> player) {
+        Token FindTokenByPlayer(std::shared_ptr<Player::Player> player) const {
             for (const auto& [token, stored_player] : token_to_player_) {
                 if (stored_player == player) {
                     return token;
@@ -77,6 +78,17 @@ namespace app {
 
         void Remove(model::Dog::Id dog_id, model::Map::Id map_id);
 
+        std::optional<Token> FindPlayerByName(const std::string& name) const {
+            std::optional<Token> result;
+            for (const auto& [personal_data, player] : players_) {
+                if (player->GetDogName() == name) {
+                    result.emplace(player_tokens_.FindTokenByPlayer(player));
+                }
+            }
+
+            return result;
+        }
+
         Token FindTokenByPlayer(std::shared_ptr<Player::Player> player);
 
     private:
@@ -88,13 +100,18 @@ namespace app {
 
     class Application {
     public:
+        struct PlayerInfo {
+            Token token;
+            model::Dog::Id id;
+        };
+
         explicit Application(model::Game& game);
 
         void SetApplicationListener(ApplicationListener& listener);
 
         const std::string GetSerializedPlayersList(const Token& token) const;
         const std::string GetSerializedGameState(const Token& token) const;
-
+        
         bool HasPlayerToken(Token token) const;
 
         std::optional<http_handler::StringResponse> 
@@ -103,8 +120,8 @@ namespace app {
 
         void MovePlayer(const Token& token, std::string direction = "");
 
-        Token AddPlayer(std::shared_ptr<model::Dog> dog, 
-                        std::shared_ptr<model::GameSession> session);
+        PlayerInfo AddPlayer(const std::string& player_name, 
+                             std::shared_ptr<model::GameSession> session);
 
         void Tick(milliseconds delta_time) const;
 
@@ -121,6 +138,9 @@ namespace app {
         }
 
     private:
+        PlayerInfo GetPlayerInfo(const std::string& name);
+
+        bool HasPlayerByName(const std::string& name) const;
 
         const std::vector<std::string> GetPlayersList(const Token& token) const;
 
@@ -130,10 +150,10 @@ namespace app {
         void RemovePlayerFromSession(std::shared_ptr<Player::Player> player, 
                                     std::shared_ptr<model::GameSession> session);
 
-        Token HandleExistingPlayer(std::shared_ptr<Player::Player> player, 
-                                   std::shared_ptr<model::GameSession> new_session);
+        // Token HandleExistingPlayer(std::shared_ptr<Player::Player> player, 
+                                //    std::shared_ptr<model::GameSession> new_session);
 
-        Token CreateNewPlayer(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> session);
+        PlayerInfo CreateNewPlayer(const std::string& player_name, std::shared_ptr<model::GameSession> session);
 
         Token FindTokenByPlayer(std::shared_ptr<Player::Player> player);
 
