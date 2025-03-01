@@ -263,11 +263,11 @@ namespace http_handler {
         
         if (!object.count("userName")) {
             return ErrorHandler::MakeBadRequestResponse(json_response, "invalidArgument",
-                                                       "Invalid name");
+                                                        "Invalid name");
         }
         if (!object.count("mapId")) {
             return ErrorHandler::MakeBadRequestResponse(json_response, "invalidArgument",
-                                                       "Invalid mapId");
+                                                        "Invalid mapId");
         }
         
         std::string map_id = object.at("mapId").as_string().c_str();
@@ -278,7 +278,8 @@ namespace http_handler {
                                                         "Invalid name");
         }
         if (session == nullptr) {
-            return ErrorHandler::MakeNotFoundResponse(json_response, "mapNotFound", "Map not found");
+            return ErrorHandler::MakeNotFoundResponse(json_response, 
+                                                      "mapNotFound", "Map not found");
         }
 
         app::Application::PlayerInfo pi = app_.AddPlayer(user_name, session);

@@ -218,7 +218,7 @@ using namespace std::literals;
     }
 
     GameSession::Id GameSession::GetSessionId() const {
-        return general_id_;
+        return id_;
     }
 
     void GameSession::AddDog(std::shared_ptr<Dog> dog) {
@@ -228,7 +228,6 @@ using namespace std::literals;
             dogs_vector_.push_back(dog);
         }
     }
-
 
     const GameSession::Dogs& GameSession::GetDogs() const {
         return dogs_;

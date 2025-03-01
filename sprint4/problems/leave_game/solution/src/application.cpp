@@ -45,6 +45,10 @@ namespace app {
 
         return nullptr;
     }
+    
+    void PlayerTokens::RemovePlayer(Token player_token) {
+        token_to_player_.erase(player_token);
+    }
 
     bool Application::HasPlayerByName(const std::string& name) const {
         return players_.FindPlayerByName(name).has_value();
@@ -62,18 +66,27 @@ namespace app {
         return pi; 
     }
 
-    Application::PlayerInfo Application::AddPlayer(const std::string& player_name, 
-                                 std::shared_ptr<model::GameSession> session) {
-        bool has_player = HasPlayerByName(player_name);
-        // auto existing_player = 
-            // FindExistingPlayer(dog->GetId(), session->GetMapId());
+    Application::PlayerInfo Application::ChangePlayerSession(std::shared_ptr<Player::Player> player, 
+                                                std::shared_ptr<model::GameSession> session) {
+        RemovePlayerFromSession(player);
 
-        // if (existing_player) {
-        //     return HandleExistingPlayer(existing_player, session);
-        // }
+        return CreateNewPlayer(player->GetDogName(), session);                                       
+    }
+
+    Application::PlayerInfo Application::AddPlayer(const std::string& player_name, 
+                                                   std::shared_ptr<model::GameSession> session) {
+        bool has_player = HasPlayerByName(player_name);
 
         if (has_player) {
-            return GetPlayerInfo(player_name);
+            auto player = players_.GetPlayerByToken(players_.FindPlayerByName(player_name).value());
+            auto player_session = player->GetGameSession();
+            auto session_id = session->GetSessionId();
+            auto player_session_id = player_session->GetSessionId();
+            if (session_id != player_session_id) {
+                return ChangePlayerSession(player, session);
+            } else {
+                return GetPlayerInfo(player_name);
+            }
         }
 
         return CreateNewPlayer(player_name, session);
@@ -87,45 +100,29 @@ namespace app {
         return players_.FindTokenByPlayer(player);
     }
 
-    std::shared_ptr<Player::Player> 
+    /* std::shared_ptr<Player::Player> 
     Application::FindExistingPlayer(model::Dog::Id dog_id, 
                                     model::Map::Id map_id) {
         return players_.FindByDogAndMapId(dog_id, map_id);
-    }
-
-
-    /* Token Application::HandleExistingPlayer(std::shared_ptr<Player::Player> player, 
-                                        std::shared_ptr<model::GameSession> new_session) {
-        auto existing_session = player->GetGameSession();
-
-        if (existing_session->GetMapId() == new_session->GetMapId()) {
-            return players_.FindTokenByPlayer(player);
-        }
-
-        std::string dog_name = player->GetGameSession()->GetDogs().at(player->GetDogId())->GetName();
-
-        RemovePlayerFromSession(player, existing_session);
-        return CreateNewPlayer(std::make_shared<model::Dog>(dog_name), new_session);
     } */
 
-
-    void Application::RemovePlayerFromSession(std::shared_ptr<Player::Player> player, 
-                                          std::shared_ptr<model::GameSession> session) {
-        session->RemoveDog(player->GetDogId());
-        players_.Remove(player->GetDogId(), session->GetMapId());
+    void Application::RemovePlayerFromSession(std::shared_ptr<Player::Player> player) {
+        auto player_session = player->GetGameSession();
+        player_session->RemoveDog(player->GetDogId());
+        players_.Remove(player->GetDogId(), player_session->GetMapId());
     }
 
     Application::PlayerInfo Application::CreateNewPlayer(const std::string& player_name, 
                                    std::shared_ptr<model::GameSession> session) {
-        PlayerInfo pi;
 
         auto dog = std::make_shared<model::Dog>(player_name);
-        
         dog->SetDefaultDogSpeed(session->GetMapDefaultSpeed());
-        session->AddDog(dog);
+        auto token = players_.Add(dog, session);
+        
+        PlayerInfo pi;
 
         pi.id = dog->GetId();
-        pi.token = players_.Add(dog, session);
+        pi.token = std::move(token);
 
         return pi;
     }
@@ -134,11 +131,11 @@ namespace app {
         return player_tokens_.FindPlayerByToken(token);
     }
 
-    std::shared_ptr<Player::Player> Players::FindByDogAndMapId(model::Dog::Id dog_id, 
+    /* std::shared_ptr<Player::Player> Players::FindByDogAndMapId(model::Dog::Id dog_id, 
                                                            model::Map::Id map_id) {
         auto it = players_.find({dog_id, *map_id});
         return it != players_.end() ? it->second : nullptr;
-    }
+    } */
 
     Token PlayerTokens::AddPlayer(std::shared_ptr<Player::Player> player) {
         Token token = GenerateToken();
@@ -151,14 +148,16 @@ namespace app {
                        std::shared_ptr<model::GameSession> game_session) {
         std::shared_ptr<Player::Player> player = std::make_shared<Player::Player>(dog, game_session);
         Token token = player_tokens_.AddPlayer(player);
-        players_[{dog->GetId(), *(game_session->GetMapId())}] = 
-            std::make_shared<Player::Player>(dog, game_session);
+        players_[{dog->GetId(), *(game_session->GetMapId())}] = player;
     
         return token;
     }
 
     void Players::Remove(model::Dog::Id dog_id, model::Map::Id map_id) {
         auto it = players_.find({dog_id, *map_id});
+        auto token = FindTokenByPlayer(it->second);
+
+        player_tokens_.RemovePlayer(token);
         if (it != players_.end()) {
             players_.erase(it);
         }

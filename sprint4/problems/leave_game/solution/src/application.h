@@ -39,9 +39,11 @@ namespace app {
 
         Token AddPlayer(std::shared_ptr<Player::Player> player);
 
+        void RemovePlayer(Token player_token);
+
         Token FindTokenByPlayer(std::shared_ptr<Player::Player> player) const {
             for (const auto& [token, stored_player] : token_to_player_) {
-                if (stored_player == player) {
+                if (stored_player->GetDogName() == player->GetDogName()) {
                     return token;
                 }
             }
@@ -74,7 +76,7 @@ namespace app {
 
         std::shared_ptr<Player::Player> GetPlayerByToken(const Token& token) const;
 
-        std::shared_ptr<Player::Player> FindByDogAndMapId(model::Dog::Id dog_id, model::Map::Id map_id);
+        // std::shared_ptr<Player::Player> FindByDogAndMapId(model::Dog::Id dog_id, model::Map::Id map_id);
 
         void Remove(model::Dog::Id dog_id, model::Map::Id map_id);
 
@@ -144,16 +146,19 @@ namespace app {
 
         const std::vector<std::string> GetPlayersList(const Token& token) const;
 
-        std::shared_ptr<Player::Player> 
-        FindExistingPlayer(model::Dog::Id dog_id, model::Map::Id map_id);
+        /* std::shared_ptr<Player::Player> 
+        FindExistingPlayer(model::Dog::Id dog_id, model::Map::Id map_id); */
 
-        void RemovePlayerFromSession(std::shared_ptr<Player::Player> player, 
-                                    std::shared_ptr<model::GameSession> session);
+        PlayerInfo ChangePlayerSession(std::shared_ptr<Player::Player>, 
+                                       std::shared_ptr<model::GameSession> session);
+
+        void RemovePlayerFromSession(std::shared_ptr<Player::Player> player);
 
         // Token HandleExistingPlayer(std::shared_ptr<Player::Player> player, 
                                 //    std::shared_ptr<model::GameSession> new_session);
 
-        PlayerInfo CreateNewPlayer(const std::string& player_name, std::shared_ptr<model::GameSession> session);
+        PlayerInfo CreateNewPlayer(const std::string& player_name, 
+                                   std::shared_ptr<model::GameSession> session);
 
         Token FindTokenByPlayer(std::shared_ptr<Player::Player> player);
 
