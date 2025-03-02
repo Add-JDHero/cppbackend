@@ -1,6 +1,8 @@
 #pragma once
 
 #include "model.h"
+#include "player.h"
+// #include "application.h"
 // #include "application.h"
 
 #include <chrono>
@@ -14,6 +16,7 @@
 #include <boost/serialization/unordered_map.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/shared_ptr.hpp>
+#include <boost/serialization/unique_ptr.hpp>
 
 namespace model {
     template <typename Archive, typename T, typename Tag>
@@ -162,7 +165,8 @@ namespace serialization {
     class RoadSer {
     public:
         RoadSer() = default;
-        explicit RoadSer(const model::Road& road) : start_(road.GetStart()), end_(road.GetEnd()) {}
+        explicit RoadSer(const model::Road& road) : start_(road.GetStart()), end_(road.GetEnd()) {
+        }
 
         template <typename Archive>
         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
@@ -170,8 +174,16 @@ namespace serialization {
             ar & end_;
         }
 
+        bool IsHorisontal() const noexcept {
+            return start_.y == end_.y;
+        }
+
         [[nodiscard]] model::Road Restore() const {
-            return model::Road(model::Road::HORIZONTAL, start_, end_.x); // Предполагаем горизонтальность
+            if (IsHorisontal()) {
+                return model::Road(model::Road::HORIZONTAL, start_, end_.x);
+            }
+
+            return model::Road(model::Road::VERTICAL, start_, end_.y);
         }
 
     private:
@@ -264,19 +276,22 @@ namespace serialization {
         GameSessionSer() = default;
         GameSessionSer(const model::GameSession& session, model::Map map) 
             : map_(MapSer(map))
-            , lootId_to_value_(session.GetLootValuesTable())
-            , lost_objects_(session.GetLostObjects()) {
-                for (const auto& [dog_id, dog] : session.GetDogs()) {
-                    dogs_[dog_id] = std::make_shared<DogSer>(*dog);
+            , lootId_to_value_(std::move(session.GetLootValuesTable()))
+            , lost_objects_(std::move(session.GetLostObjects()))
+            , id_(session.GetSessionId()){
+                for (const auto& dog : session.GetDogsVector()) {
+                    auto ser_dog_ptr = std::make_shared<DogSer>(*dog);
+                    dogs_vector_.push_back(ser_dog_ptr);
                 }
+
         }
 
         template <typename Archive>
         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
-            ar & dogs_;
             ar & map_;
             ar & lootId_to_value_;
             ar & lost_objects_;
+            ar & dogs_vector_;
         }
 
         [[nodiscard]] model::GameSession Restore(const model::CommonData& data) const {
@@ -285,15 +300,20 @@ namespace serialization {
 
             model::GameSession session(data.maps_[map_index], lootId_to_value_);
 
-            for (const auto& [id, dog] : dogs_) {
-                session.AddDog(std::make_shared<model::Dog>(dog->Restore()));
+            for (const auto& dog_ser_ptr : dogs_vector_) {
+                session.AddDog(std::make_shared<model::Dog>(dog_ser_ptr->Restore()));
             }
+
             return session;
         }
 
     private:
-        std::unordered_map<model::Dog::Id, std::shared_ptr<DogSer>> dogs_;
+        model::GameSession::Id id_;
+
+        std::vector<std::shared_ptr<DogSer>> dogs_vector_;
+        
         MapSer map_;
+        
         model::GameSession::LootIdToValue lootId_to_value_;
         model::GameSession::LostObjects lost_objects_;
     };
@@ -370,7 +390,9 @@ namespace serialization {
         std::vector<GameSessionSer> sessions_;
         model::CommonData::GameSessionIdToIndex game_sessions_id_to_index_;
 
-        std::unordered_map<model::Map::Id, std::vector<std::string>, util::TaggedHasher<model::Map::Id>> mapId_to_lootTypes_;
+        std::unordered_map<model::Map::Id, 
+                           std::vector<std::string>, 
+                           util::TaggedHasher<model::Map::Id>> mapId_to_lootTypes_;
 
         model::CommonData::MapIdToGameSessions mapId_to_session_index_;
         std::vector<MapSer> maps_;
@@ -399,7 +421,7 @@ namespace serialization {
         [[nodiscard]] model::Game Restore() const {
             model::Game game;
 
-            game.SetCommonData(std::move(serialized_data_.Restore()));
+            game.LoadGameData(std::move(serialized_data_.Restore()));
             game.SetDefaultDogSpeed(default_dog_speed_);
             game.SetDefaultTickTime(default_tick_time_);
 
@@ -414,4 +436,106 @@ namespace serialization {
     };
 
 } // namespace serialization
+
+// namespace app_serialization {
+//     class PlayerSer {
+//     public:
+//         PlayerSer() = default;
+        
+//         PlayerSer(const player::Player& player) 
+//             : dog_(serialization::DogSer(*player.GetDog()))
+//             , game_session_id_(player.GetGameSession()->GetSessionId()) { // Сохраняем только ID сессии
+//         }
+
+//         template <typename Archive>
+//         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
+//             ar & dog_;
+//             ar & game_session_id_;
+//         }
+
+//         [[nodiscard]] std::shared_ptr<player::Player> Restore(model::CommonData& data) const {
+//             auto dog = std::make_shared<model::Dog>(dog_.Restore());
+
+//             // Ищем сессию по ID
+//             auto session_it = data.game_sessions_id_to_index_.find(game_session_id_);
+//             if (session_it == data.game_sessions_id_to_index_.end()) {
+//                 throw std::runtime_error("GameSession not found for Player!");
+//             }
+            
+//             std::shared_ptr<model::GameSession> session = data.sessions_[session_it->second];
+
+//             return std::make_shared<player::Player>(dog, session);
+//         }
+
+//     private:
+//         serialization::DogSer dog_;
+//         model::GameSession::Id game_session_id_;
+//     };
+
+//     class PlayerTokensSer {
+//     public:
+//         PlayerTokensSer() = default;
+        
+//         explicit PlayerTokensSer(const app::PlayerTokens& player_tokens) {
+//             for (const auto& [token, player] : player_tokens.GetTokenMap()) {
+//                 tokens_.emplace_back(token, player->GetDogId());
+//             }
+//         }
+
+//         template <typename Archive>
+//         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
+//             ar & tokens_;
+//         }
+
+//         [[nodiscard]] std::unordered_map<app::Token, std::shared_ptr<player::Player>, util::TaggedHasher<app::Token>>
+//             Restore(const app::Players& players) const {
+//             std::unordered_map<app::Token, std::shared_ptr<player::Player>, util::TaggedHasher<app::Token>> restored_tokens;
+
+//             for (const auto& [token, dog_id] : tokens_) {
+//                 auto player = players.FindPlayerByDogId(model::Dog::Id(dog_id));
+//                 if (player) {
+//                     restored_tokens[token] = player;
+//                 }
+//             }
+
+//             return restored_tokens;
+//         }
+
+//     private:
+//         std::vector<std::pair<app::Token, uint64_t>> tokens_;
+//     };
+
+//      class PlayersSer {
+//     public:
+//         PlayersSer() = default;
+        
+//         explicit PlayersSer(const app::Players& players) {
+//             for (const auto& [dog_id, player] : players.GetPlayers()) {
+//                 players_.emplace_back(*player);
+//                 dog_ids_.push_back(dog_id);
+//             }
+//         }
+
+//         template <typename Archive>
+//         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
+//             ar & players_;
+//             ar & dog_ids_;
+//         }
+
+//         [[nodiscard]] app::Players&& Restore(model::CommonData& data) const {
+//             app::Players players;
+//             for (size_t i = 0; i < players_.size(); ++i) {
+//                 auto player = players_[i].Restore(data);
+//                 model::Dog::Id dog_id = model::Dog::Id(dog_ids_[i]);
+//                 players.Add(player->GetDog(), player->GetGameSession());
+//             }
+
+//             return std::move(players);
+//         }
+
+//     private:
+//         std::vector<PlayerSer> players_;
+//         std::vector<uint64_t> dog_ids_;
+//     };
+// }
 

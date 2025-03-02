@@ -40,10 +40,6 @@ void RunWorkers(unsigned n, const Fn& fn) {
 
 }  // namespace
 
-    // =================================================================
-    // TODO: перенести game в Application (ломается перемещение собаки!) 
-    // =================================================================
-
 int main(int argc, const char* argv[]) {
 
     #ifdef TESTS 
@@ -70,10 +66,8 @@ int main(int argc, const char* argv[]) {
 
         // 1. Загружаем карту из файла и строим модель игры
         model::Game game = json_loader::LoadGame(arg.config);
+        game.SetDefaultTickTime(static_cast<double>(tick_time.count()));
 
-        game.SetDefaultTickTime(static_cast<double>(tick_time.count()) / 1000.0);
-
-        // model::GameSession::SetDefaultTickTime(tick_time);
         app::Application app(game);
 
         serialization::SerializingListener serializer(app, arg.state_file, std::chrono::milliseconds{3500});
@@ -101,7 +95,7 @@ int main(int argc, const char* argv[]) {
 
         // 4. Создаём обработчик HTTP-запросов и связываем его с моделью игры
         auto handler = 
-            std::make_shared<http_handler::RequestHandler>(game, strand, arg.www_root, app);
+            std::make_shared<http_handler::RequestHandler>(strand, arg.www_root, app);
 
         http_handler::LoggingRequestHandler logging_handler(handler);
 

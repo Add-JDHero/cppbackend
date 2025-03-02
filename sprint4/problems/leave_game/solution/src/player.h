@@ -8,7 +8,7 @@
 #include <memory>
 #include <iostream>
 
-namespace Player {
+namespace player {
 
     namespace detail {
         struct TokenTag {};
@@ -30,6 +30,7 @@ namespace Player {
         void MovePlayer(std::string direction = "");
 
         const std::shared_ptr<model::GameSession> GetGameSession() const;
+        const std::shared_ptr<model::Dog> GetDog() const { return dog_; }
 
     private:
         std::shared_ptr<model::Dog> dog_;

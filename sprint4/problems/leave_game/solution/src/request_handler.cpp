@@ -130,15 +130,12 @@ namespace http_handler {
         return response;
     }
 
-    RequestHandler::RequestHandler(model::Game& game, Strand& api_strand, fs::path path, 
+    RequestHandler::RequestHandler(Strand& api_strand, fs::path path, 
                                    app::Application& app)
-        : game_{game}
-        , api_strand_(api_strand)
+        : api_strand_(api_strand)
         , root_dir_(path)
         , app_(app) {
     }
-
-
 
     StringResponse ApiRequestHandler::RouteRequest(const StringRequest& req) {
         return router_->Route(req);
@@ -212,7 +209,7 @@ namespace http_handler {
     }
 
     StringResponse ApiRequestHandler::GetMapsRequest(const JsonResponseHandler& json_response) const {
-        std::string maps = json_loader::MapSerializer::SerializeMapsMainInfo(game_.GetMapService().GetMaps());
+        std::string maps = json_loader::MapSerializer::SerializeMapsMainInfo(app_.GetGameMapService().GetMaps());
 
         return json_response(http::status::ok, std::move(maps), ContentType::APP_JSON);
     }
@@ -220,11 +217,11 @@ namespace http_handler {
     StringResponse ApiRequestHandler::GetMapDetailsRequest(const JsonResponseHandler& json_response,
                                                            std::string_view map_id) const {
         const model::Map::Id id{std::string(map_id)};
-        auto map_ptr = game_.GetMapService().FindMap(id);
+        auto map_ptr = app_.GetGameMapService().FindMap(id);
         
         if (map_ptr) {
             auto map_json = json_loader::MapSerializer::SerializeSingleMap(*map_ptr);
-            json::array loot_types = *game_.GetLootService().GetLootTypes().at(map_ptr->GetId());
+            json::array loot_types = app_.GetMapLootTypes(map_ptr->GetId());
             map_json["lootTypes"] = std::move(loot_types);
             std::string serialized_map = boost::json::serialize(std::move(map_json));
 
@@ -272,7 +269,7 @@ namespace http_handler {
         
         std::string map_id = object.at("mapId").as_string().c_str();
         std::string user_name = object.at("userName").as_string().c_str();
-        auto session = game_.GetSessionService().FindGameSession(model::Map::Id{map_id.data()});
+        auto session = app_.FindGameSession(model::Map::Id{map_id.data()});
         if (user_name.size() == 0) {
             return ErrorHandler::MakeBadRequestResponse(json_response, "invalidArgument", 
                                                         "Invalid name");
@@ -559,13 +556,13 @@ namespace http_handler {
         return ErrorHandler::MakeBadRequestResponse(json_response);
     }
 
-    FileRequestHandler::FileRequestHandler(model::Game& game, fs::path path) 
-        : game_(game), root_dir_(path) {
+    FileRequestHandler::FileRequestHandler(fs::path path) 
+        : root_dir_(path) {
     }
 
-    ApiRequestHandler::ApiRequestHandler(model::Game& game, fs::path path, 
+    ApiRequestHandler::ApiRequestHandler(fs::path path, 
                                          app::Application& app) 
-        : game_(game), root_dir_(path), app_(app)
+        : root_dir_(path), app_(app)
         , router_(std::make_unique<router::Router>()) {
             SetupEndPoits();
     }

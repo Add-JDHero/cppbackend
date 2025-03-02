@@ -100,7 +100,7 @@ namespace http_handler {
 
     class ApiRequestHandler {
     public:
-        ApiRequestHandler(model::Game& game, fs::path path, 
+        ApiRequestHandler(fs::path path, 
                           app::Application& app);
 
         StringResponse RouteRequest(const StringRequest& req);
@@ -158,7 +158,6 @@ namespace http_handler {
 
         void SetupEndPoits();
 
-        model::Game& game_;
         fs::path root_dir_;
         app::Application& app_;
 
@@ -167,13 +166,12 @@ namespace http_handler {
 
     class FileRequestHandler {
     public:
-        FileRequestHandler(model::Game& game, fs::path path);
+        FileRequestHandler(fs::path path);
 
         ResponseVariant HandleRequest(const StringRequest& request, 
                                       const JsonResponseHandler& json_response);
 
     private:
-        model::Game& game_;
         fs::path root_dir_;
     };
 
@@ -181,7 +179,7 @@ namespace http_handler {
     public:
         using Strand = net::strand<net::io_context::executor_type>;
 
-        RequestHandler(model::Game& game, Strand& api_strand, fs::path path, 
+        RequestHandler(Strand& api_strand, fs::path path, 
                        app::Application& app);
                        
         RequestHandler(const RequestHandler&) = delete;
@@ -194,12 +192,11 @@ namespace http_handler {
         void operator()(http::request<Body, http::basic_fields<Allocator>>&& req, Send&& send);
 
     private:
-        model::Game& game_;
         fs::path root_dir_;
 
         app::Application& app_;
-        FileRequestHandler file_handler_{game_, root_dir_};
-        ApiRequestHandler api_handler_{game_, root_dir_, app_};
+        FileRequestHandler file_handler_{root_dir_};
+        ApiRequestHandler api_handler_{root_dir_, app_};
         Strand& api_strand_;
 
         void SetupEndPoits();

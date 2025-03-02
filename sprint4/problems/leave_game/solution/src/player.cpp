@@ -1,6 +1,6 @@
 #include "player.h"
 
-namespace Player {
+namespace player {
 
     Player::Player(std::shared_ptr<model::Dog> dog, std::shared_ptr<model::GameSession> game_session):
         dog_(dog), 

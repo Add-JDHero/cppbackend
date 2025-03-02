@@ -12,7 +12,7 @@
       "name": "Map 1",
       "lootTypes": [
         {
-          "name": "key",
+        "name": "key",
           "file": "assets/key.obj",
           "type": "obj",
           "rotation": 90,

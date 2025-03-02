@@ -105,6 +105,7 @@ namespace model {
     };
 
     class Road {
+    public:
         struct HorizontalTag {
             explicit HorizontalTag() = default;
         };
@@ -113,7 +114,6 @@ namespace model {
             explicit VerticalTag() = default;
         };
 
-    public:
         constexpr static HorizontalTag HORIZONTAL{};
         constexpr static VerticalTag VERTICAL{};
 
@@ -239,9 +239,9 @@ namespace model {
         const Direction& GetDirection() const noexcept;
         const State& GetState() const noexcept;
 
-        void AddToBag(int loot_id, int loot_type) {
+        void AddToBag(uint64_t loot_id, uint64_t loot_type) {
             if (state_.bag.size() < bag_capacity_) {
-                state_.bag.emplace_back(loot_id, loot_type);
+                state_.bag.push_back({.id = loot_id, .type = loot_type});
             }
         }
 
@@ -287,6 +287,14 @@ namespace model {
             uint64_t type;
             model::Pos position;
         };
+        
+        struct Region {
+            double min_x, max_x, min_y, max_y;
+
+            bool Contains(const Pos& pos) const {
+                return pos.x >= min_x && pos.x <= max_x && pos.y >= min_y && pos.y <= max_y;
+            }
+        };
 
         using Id = uint64_t;
         using Dogs = std::unordered_map<Dog::Id, std::shared_ptr<Dog>>;
@@ -299,10 +307,12 @@ namespace model {
         Id GetSessionId() const;
         double GetMapDefaultSpeed() const;
         const Dogs& GetDogs() const;
+        const std::vector<std::shared_ptr<Dog>> GetDogsVector() const { return dogs_vector_; }
+        // const std::unordered_map<int, Region> GetRegions() const { return regions_; }
         const std::vector<std::string> GetPlayersNames() const;
         const std::vector<State> GetPlayersUnitStates() const;
-        const LostObjects& GetLostObjects() const {return loots_; }
-        const LootIdToValue& GetLootValuesTable() const { return lootId_to_value_; }
+        const LostObjects GetLostObjects() const { return loots_; }
+        const LootIdToValue GetLootValuesTable() const { return lootId_to_value_; }
 
         int GetLootValue(int loot_type) const;
 
@@ -329,16 +339,7 @@ namespace model {
         void RemoveDog(Dog::Id id);
     
     private:
-
         Pos CalculateNewPosition(const Pos& position, const Speed& speed, double delta_time);
-
-        struct Region {
-            double min_x, max_x, min_y, max_y;
-
-            bool Contains(const Pos& pos) const {
-                return pos.x >= min_x && pos.x <= max_x && pos.y >= min_y && pos.y <= max_y;
-            }
-        };
 
         std::unordered_map<Dog::Id, Pos> 
         ComputeNewPositions(double delta_time);
@@ -448,6 +449,12 @@ namespace model {
         std::shared_ptr<model::GameSession> 
         FindGameSession(model::Map::Id map_id);
 
+        std::shared_ptr<model::GameSession> FindGameSession(model::GameSession::Id session_id) const {
+            auto it = common_data_->sessions_[common_data_->game_sessions_id_to_index_[session_id]];
+            
+            return std::make_shared<model::GameSession>(*it);
+        }
+
         std::shared_ptr<GameSession> 
         FindGameSessionBySessionId(GameSession::Id session_id);
 
@@ -511,9 +518,13 @@ namespace model {
 
         void SetDefaultTickTime(double delta_time);
         void SetDefaultDogSpeed(double default_speed);
-        void SetCommonData(CommonData data) { 
+        
+        void LoadGameData(CommonData data) { 
             common_data_ = std::make_shared<CommonData>(std::move(data));
             map_service_ = MapService(common_data_);
+            session_service_ = std::make_shared<SessionService>((common_data_));
+            loot_service_ = std::make_shared<LootService>(common_data_);
+            engine_ = GameEngine(session_service_, loot_service_);
         }
 
         GameEngine& GetEngine() { return engine_; }
