@@ -29,6 +29,8 @@ namespace app_serialization {
     class PlayerTokensSer;
 
     class PlayersSer;
+
+    class GameSave;
 }
 
 namespace app {
@@ -180,14 +182,10 @@ namespace app {
             return serialization::GameSer(game_); 
         }
 
-        std::unique_ptr<app_serialization::PlayersSer> SerializePlayers() const {
-            return std::make_unique<app_serialization::PlayersSer>(players_);
-        }
+        std::unique_ptr<app_serialization::PlayersSer> SerializePlayers() const;
 
         void LoadGameFromFile(model::Game game);
-        void LoadPlayersFromFile(Players&& players) {
-            players_.RestorePlayers(std::move(players));
-        }
+        void LoadPlayersFromFile(Players&& players);
 
         void LoadGameFromFilie();
 
@@ -223,10 +221,13 @@ namespace serialization {
 
         void OnTick(milliseconds delta) override;
 
+        void LoadGameDataFromFile(app_serialization::GameSave&& saved_game);
+
+    private:
         void SaveStateToFile();
         void LoadStateFromFile() override;
 
-    private:
+
         app::Application& app_;
         std::string state_file_;
         milliseconds save_period_;
@@ -312,6 +313,8 @@ namespace app_serialization {
 
         template <typename Archive>
         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
+            std::cout << "Serializing players, count: " << players_.size() << std::endl;
+            ar & players_;
             ar & players_;
             ar & dog_ids_;
         }
@@ -320,12 +323,13 @@ namespace app_serialization {
             auto players = std::make_unique<app::Players>();
             
             for (size_t i = 0; i < players_.size(); ++i) {
-                auto player = players_[i].Restore(session_manager);
+                auto player = 
+                    players_[i].Restore(session_manager);
 
-                // Восстанавливаем игрока с существующим Dog и GameSession
                 auto token = players->FindTokenByPlayer(player);
                 if (*token == "") {
-                    token = players->Add(player->GetDog(), player->GetGameSession());
+                    token = players->Add(player->GetDog(), 
+                        player->GetGameSession());
                 }
             }
 
@@ -337,4 +341,24 @@ namespace app_serialization {
         std::vector<PlayerSer> players_;
         std::vector<uint64_t> dog_ids_;
     };
+
+    struct GameSave {
+        serialization::GameSer game;
+        PlayersSer players;
+
+        template <typename Archive>
+        void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
+            ar & game;
+            ar & players;
+        }
+
+        [[nodiscard]] std::pair<model::Game, std::unique_ptr<app::Players>> Restore(model::SessionService& session_service) const {
+            model::Game restored_game = game.Restore();
+            std::unique_ptr<app::Players> restored_players = players.Restore(session_service);
+
+            return {std::move(restored_game), std::move(restored_players)};
+        }
+    };
+
+    
 }

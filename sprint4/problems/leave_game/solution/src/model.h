@@ -239,6 +239,8 @@ namespace model {
         const Direction& GetDirection() const noexcept;
         const State& GetState() const noexcept;
 
+        const double GetDefaultDogSpeed() const noexcept { return default_dog_speed_; }
+
         void AddToBag(uint64_t loot_id, uint64_t loot_type) {
             if (state_.bag.size() < bag_capacity_) {
                 state_.bag.push_back({.id = loot_id, .type = loot_type});

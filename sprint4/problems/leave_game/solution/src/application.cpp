@@ -2,6 +2,7 @@
 #include "handlers.h"
 #include "json_loader.h"
 #include "model.h"
+#include "model_serialization.h"
 #include "player.h"
 #include "type_declarations.h"
 #include <boost/json/object.hpp>
@@ -18,8 +19,9 @@ namespace app {
 
 	Token PlayerTokens::GenerateToken() {
         std::ostringstream ss;
-        ss << std::hex << std::setfill('0') << std::setw(16) << generator1_()
-        << std::setw(16) << generator2_();
+        ss << std::hex << std::setfill('0') 
+            << std::setw(16) << generator1_()
+            << std::setw(16) << generator2_();
 
         std::string token = ss.str();
 
@@ -27,7 +29,10 @@ namespace app {
         std::mt19937 gen(random_device_());
         std::uniform_int_distribution<> dist(0, 1);
 
-        std::transform(token.cbegin(), token.cend(), token.begin(), [&dist, &gen](char c) {
+        std::transform(token.cbegin(), 
+                       token.cend(), 
+                       token.begin(), 
+                       [&dist, &gen](char c) {
             if (std::isalpha(c) && dist(gen)) {
                 c = std::toupper(c);
             }
@@ -38,7 +43,8 @@ namespace app {
         return Token{token};
     }
 
-    std::shared_ptr<player::Player> PlayerTokens::FindPlayerByToken(const Token& token) const {
+    std::shared_ptr<player::Player> 
+    PlayerTokens::FindPlayerByToken(const Token& token) const {
         auto player = token_to_player_.find(token);
         if (player != token_to_player_.end())
             return player->second;
@@ -54,7 +60,8 @@ namespace app {
         return players_.FindPlayerByName(name).has_value();
     }
 
-    Application::PlayerInfo Application::GetPlayerInfo(const std::string& name) { 
+    Application::PlayerInfo 
+    Application::GetPlayerInfo(const std::string& name) { 
         if (!players_.FindPlayerByName(name).has_value()) {
             return {};
         }
@@ -66,19 +73,22 @@ namespace app {
         return pi; 
     }
 
-    Application::PlayerInfo Application::ChangePlayerSession(std::shared_ptr<player::Player> player, 
-                                                std::shared_ptr<model::GameSession> session) {
+    Application::PlayerInfo 
+    Application::ChangePlayerSession(std::shared_ptr<player::Player> player, 
+                                     std::shared_ptr<model::GameSession> session) {
         RemovePlayerFromSession(player);
 
         return CreateNewPlayer(player->GetDogName(), session);                                       
     }
 
-    Application::PlayerInfo Application::AddPlayer(const std::string& player_name, 
-                                                   std::shared_ptr<model::GameSession> session) {
+    Application::PlayerInfo 
+    Application::AddPlayer(const std::string& player_name, 
+                           std::shared_ptr<model::GameSession> session) {
         bool has_player = HasPlayerByName(player_name);
 
         if (has_player) {
-            auto player = players_.GetPlayerByToken(players_.FindPlayerByName(player_name).value());
+            auto player = 
+                players_.GetPlayerByToken(players_.FindPlayerByName(player_name).value());
             auto player_session = player->GetGameSession();
             auto session_id = session->GetSessionId();
             auto player_session_id = player_session->GetSessionId();
@@ -125,8 +135,9 @@ namespace app {
         players_.Remove(player->GetDogId(), player_session->GetMapId());
     }
 
-    Application::PlayerInfo Application::CreateNewPlayer(const std::string& player_name, 
-                                   std::shared_ptr<model::GameSession> session) {
+    Application::PlayerInfo 
+    Application::CreateNewPlayer(const std::string& player_name, 
+                                 std::shared_ptr<model::GameSession> session) {
 
         auto dog = std::make_shared<model::Dog>(player_name);
         dog->SetDefaultDogSpeed(session->GetMapDefaultSpeed());
@@ -140,7 +151,8 @@ namespace app {
         return pi;
     }
 
-    std::shared_ptr<player::Player> Players::GetPlayerByToken(const Token& token) const {
+    std::shared_ptr<player::Player> 
+    Players::GetPlayerByToken(const Token& token) const {
         return player_tokens_.FindPlayerByToken(token);
     }
 
@@ -153,14 +165,16 @@ namespace app {
 
     Token Players::Add(std::shared_ptr<model::Dog> dog, 
                        std::shared_ptr<model::GameSession> game_session) {
-        std::shared_ptr<player::Player> player = std::make_shared<player::Player>(dog, game_session);
+        std::shared_ptr<player::Player> player = 
+            std::make_shared<player::Player>(dog, game_session);
         Token token = player_tokens_.AddPlayer(player);
         players_[{dog->GetId(), *(game_session->GetMapId())}] = player;
     
         return token;
     }
 
-    std::optional<Token> Players::FindPlayerByName(const std::string& name) const {
+    std::optional<Token> 
+    Players::FindPlayerByName(const std::string& name) const {
         std::optional<Token> result;
         for (const auto& [personal_data, player] : players_) {
             if (player->GetDogName() == name) {
@@ -185,12 +199,15 @@ namespace app {
         : game_(game) {
     }
 
-    const std::vector<std::string> Application::GetPlayersList(const Token& token) const {
-        auto player = players_.GetPlayerByToken(token);
+    const std::vector<std::string> 
+    Application::GetPlayersList(const Token& token) const {
+        auto player = 
+            players_.GetPlayerByToken(token);
         if (!player) return {};
 
         auto game_session = player->GetGameSession();
-        auto players_list = game_session->GetPlayersNames();
+        auto players_list = 
+            game_session->GetPlayersNames();
 
         std::sort(players_list.begin(), players_list.end());
 
@@ -204,8 +221,9 @@ namespace app {
     const std::string Application::GetSerializedPlayersList(const Token& token) const {
         boost::json::object players_json;
 
-        auto player = players_.GetPlayerByToken(token);
-        if (!player) return boost::json::serialize(players_json);  // Если игрока нет, возвращаем пустой JSON
+        auto player = 
+            players_.GetPlayerByToken(token);
+        if (!player) return boost::json::serialize(players_json);
 
         for (const auto& [dog_name, dog_id] : players_.GetPlayerNamesToId()) {
             players_json[std::to_string(dog_id)] = boost::json::object{
@@ -217,23 +235,35 @@ namespace app {
     }
 
     bool Application::HasPlayerToken(Token token) const {
-        auto player = players_.GetPlayerByToken(app::Token{token});
+        auto player = 
+            players_.GetPlayerByToken(app::Token{token});
 
         return player != nullptr;
     }
 
-    const std::string Application::GetSerializedGameState(const Token& token) const {
+    const std::string 
+    Application::GetSerializedGameState(const Token& token) const {
         auto game_session = players_.GetPlayerByToken(token)->GetGameSession();
         std::vector<model::State> states = game_session->GetPlayersUnitStates();
         const model::GameSession::LostObjects 
             lost_objects = game_session->GetLostObjects();
 
-        return json_loader::StateSerializer::SerializeStates(states, lost_objects);
+        return json_loader::StateSerializer::SerializeStates(states, 
+                                                             lost_objects);
     }
     
     void Application::MovePlayer(const Token& token, std::string direction) {
         auto player = players_.GetPlayerByToken(token);
         player->MovePlayer(direction);
+    }
+
+    std::unique_ptr<app_serialization::PlayersSer> 
+    Application::SerializePlayers() const {
+        return std::make_unique<app_serialization::PlayersSer>(players_);
+    }
+
+    void Application::LoadPlayersFromFile(Players&& players) {
+        players_.RestorePlayers(std::move(players));
     }
 
     void Application::LoadGameFromFile(model::Game game) {
@@ -274,51 +304,61 @@ namespace serialization {
         }
     }
 
-void SerializingListener::SaveStateToFile() {
-    std::stringstream ss;
-    try {
-        boost::archive::text_oarchive oa{ss};
-        GameSer serialized_game = app_.SerializeGame();
-        auto players_ser = app_.SerializePlayers();
-        oa << serialized_game << players_ser;
+    void SerializingListener::SaveStateToFile() {
+        std::stringstream ss;
+        try {
+            boost::archive::text_oarchive oa{ss};
+            app_serialization::GameSave g_s;
+            g_s.game = app_.SerializeGame();
+            g_s.players = std::move(*app_.SerializePlayers());
+            // oa << serialized_game;
+            oa << g_s;
 
-        std::string temp_file = state_file_ + ".tmp";
-        {
-            std::ofstream ofs(temp_file);
-            if (!ofs) {
-                throw std::runtime_error("Failed to open temporary state file for writing.");
+            std::string temp_file = state_file_ + ".tmp";
+            {
+                std::ofstream ofs(temp_file);
+                if (!ofs) {
+                    throw std::runtime_error("Failed to open temporary state file for writing.");
+                }
+                ofs << ss.str();
             }
-            ofs << ss.str();
+
+            std::filesystem::rename(temp_file, state_file_);
+            std::cout << "Game state saved to " << state_file_ << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "Error saving game state: " << e.what() << std::endl;
         }
-
-        std::filesystem::rename(temp_file, state_file_);
-        std::cout << "Game state saved to " << state_file_ << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "Error saving game state: " << e.what() << std::endl;
     }
-}
 
-void SerializingListener::LoadStateFromFile() {
-    try {
-        std::ifstream ifs(state_file_);
-        if (!ifs) {
-            throw std::runtime_error("Failed to open state file for reading.");
+    void SerializingListener::LoadGameDataFromFile(app_serialization::GameSave&& saved_game) {
+        app_.LoadGameFromFile(std::move(saved_game.game.Restore()));
+        auto tmp = 
+            saved_game.players.Restore(
+                app_.GetSessionService()
+            );
+        app_.LoadPlayersFromFile(std::move(*tmp));
+
+    }
+
+    void SerializingListener::LoadStateFromFile() {
+        try {
+            std::ifstream ifs(state_file_);
+            if (!ifs) {
+                throw std::runtime_error("Failed to open state file for reading.");
+            }
+
+            boost::archive::text_iarchive ia{ifs};
+
+            app_serialization::GameSave g_s;
+            ia >> g_s;
+            
+            LoadGameDataFromFile(std::move(g_s));
+
+            std::cout << "Game state restored from " << state_file_ << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "Error loading game state: " << e.what() << std::endl;
+            exit(EXIT_FAILURE);
         }
-
-        boost::archive::text_iarchive ia{ifs};
-        GameSer serialized_game;
-        app_serialization::PlayersSer players;
-        ia >> serialized_game >> players;
-        
-        app_.LoadGameFromFile(std::move(serialized_game.Restore()));
-        // app_.FindGameSession(model::Map::Id map_id)
-        app_.LoadPlayersFromFile(std::move(*players.Restore(app_.GetSessionService())));
-
-        std::cout << "Game state restored from " << state_file_ << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "Error loading game state: " << e.what() << std::endl;
-        exit(EXIT_FAILURE);
     }
-}
 
 }

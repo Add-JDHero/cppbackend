@@ -142,23 +142,27 @@ namespace serialization {
         DogSer() = default;
         DogSer(const model::Dog& dog) 
             : state_(dog.GetState())
-            , name_(dog.GetName()) {
+            , name_(dog.GetName())
+            , dog_speed_(dog.GetDefaultDogSpeed()) {
         }
 
         template <typename Archive>
         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
             ar & name_;
             ar & state_;
+            ar & dog_speed_;
         }
 
         [[nodiscard]] model::Dog Restore() const {
             model::Dog dog(state_.Restore(), name_);
+            dog.SetDefaultDogSpeed(dog_speed_);
 
             return dog;
         }
 
     private:
         StateSer state_;
+        double dog_speed_ = 0;
         std::string name_;
     };
 
@@ -237,7 +241,10 @@ namespace serialization {
     public:
         MapSer() = default;
         explicit MapSer(const model::Map& map)
-            : id_(map.GetId()), name_(map.GetName()), bag_capacity_(map.GetBagCapacity()) {
+            : id_(map.GetId())
+            , name_(map.GetName())
+            , bag_capacity_(map.GetBagCapacity())
+            , default_dog_speed_(map.GetDefaultDogSpeed()) {
             for (const auto& road : map.GetRoads()) roads_.emplace_back(road);
             for (const auto& building : map.GetBuildings()) buildings_.emplace_back(building);
             for (const auto& office : map.GetOffices()) offices_.emplace_back(office);
@@ -251,11 +258,13 @@ namespace serialization {
             ar & roads_;
             ar & buildings_;
             ar & offices_;
+            ar & default_dog_speed_;
         }
 
         [[nodiscard]] model::Map Restore() const {
             model::Map map(id_, name_);
             map.SetBagCapacity(bag_capacity_);
+            map.SetDefaultDogSpeed(default_dog_speed_);
             for (const auto& road : roads_) map.AddRoad(road.Restore());
             for (const auto& building : buildings_) map.AddBuilding(building.Restore());
             for (const auto& office : offices_) map.AddOffice(office.Restore());
@@ -266,6 +275,7 @@ namespace serialization {
         model::Map::Id id_;
         std::string name_;
         int bag_capacity_;
+        double default_dog_speed_ = 0;
         std::vector<RoadSer> roads_;
         std::vector<BuildingSer> buildings_;
         std::vector<OfficeSer> offices_;
@@ -301,7 +311,9 @@ namespace serialization {
             model::GameSession session(data.maps_[map_index], lootId_to_value_);
 
             for (const auto& dog_ser_ptr : dogs_vector_) {
-                session.AddDog(std::make_shared<model::Dog>(dog_ser_ptr->Restore()));
+                auto dog = std::make_shared<model::Dog>(dog_ser_ptr->Restore());
+                dog->SetDefaultDogSpeed(session.GetMapDefaultSpeed());
+                session.AddDog(dog);
             }
 
             return session;
