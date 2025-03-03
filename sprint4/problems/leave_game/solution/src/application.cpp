@@ -267,7 +267,7 @@ namespace app {
     }
 
     void Application::LoadGameFromFile(model::Game game) {
-        game_.LoadGameData(std::move(game.GetCommonData()));
+        game_.LoadGameData(std::move(game.GetCommonData()), game_.GetLootService().GetGeneratorConfig());
         game_.SetDefaultDogSpeed(game.GetDefaultDogSpeed());
         game_.SetDefaultTickTime(game.GetDefaultTickTime());
     }

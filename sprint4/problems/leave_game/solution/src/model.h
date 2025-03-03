@@ -318,17 +318,29 @@ namespace model {
 
         int GetLootValue(int loot_type) const;
 
+        std::shared_ptr<Dog> GetDogById(model::Dog::Id id) {
+            if (dogs_.count(id)) {
+                return dogs_[id];
+            }
+            
+            return nullptr;
+        }
+
         uint64_t GetLootCount();
         void GenerateLoot(int count, int loot_types_count);
 
         Pos GenerateRandomRoadPosition();
+
+        void LootRecovery(LostObjects loot) {
+            loots_ = std::move(loot);
+        }
 
         std::vector<collision_detector::Gatherer>
         GetGatherers(double delta_time) const;
         std::vector<collision_detector::Item>
         GetItems() const;
 
-        void AddDog(std::shared_ptr<Dog> dog);
+        void AddDog(std::shared_ptr<Dog> dog, bool is_deserialized = false);
 
         bool HasDog(Dog::Id id);
 
@@ -476,6 +488,8 @@ namespace model {
 
         void ConfigureLootGenerator(double period, double probability);
 
+        loot_gen::LootGeneratorConfig GetGeneratorConfig() const { return loot_config_; }
+
         const CommonData::MapLootTypes& GetLootTypes() {
             return common_data_->mapId_to_lootTypes_;
         }
@@ -514,6 +528,7 @@ namespace model {
             , engine_(session_service_, loot_service_) {
         }
  
+        loot_gen::LootGeneratorConfig GetGeneratorConfig() const { return loot_service_->GetGeneratorConfig(); }
         double GetDefaultDogSpeed() const;
         double GetDefaultTickTime() const { return default_tick_time_; }
         CommonData& GetCommonData() const { return *common_data_; }
@@ -521,11 +536,12 @@ namespace model {
         void SetDefaultTickTime(double delta_time);
         void SetDefaultDogSpeed(double default_speed);
         
-        void LoadGameData(CommonData data) { 
+        void LoadGameData(CommonData data, loot_gen::LootGeneratorConfig config) { 
             common_data_ = std::make_shared<CommonData>(std::move(data));
             map_service_ = MapService(common_data_);
             session_service_ = std::make_shared<SessionService>((common_data_));
             loot_service_ = std::make_shared<LootService>(common_data_);
+            loot_service_->ConfigureLootGenerator(config.period, config.probability);
             engine_ = GameEngine(session_service_, loot_service_);
         }
 

@@ -252,15 +252,24 @@ namespace app_serialization {
         }
 
         [[nodiscard]] std::shared_ptr<player::Player> Restore(const model::SessionService& session_manager) const {
-            auto dog = std::make_shared<model::Dog>(dog_.Restore());
-
-            auto session = session_manager.FindGameSession(game_session_id_);
-            if (!session) {
-                throw std::runtime_error("GameSession not found for Player!");
-            }
-
-            return std::make_shared<player::Player>(dog, session);
+        auto session = session_manager.FindGameSession(game_session_id_);
+        if (!session) {
+            throw std::runtime_error("GameSession not found for Player!");
         }
+
+        // Проверяем, есть ли уже такая собака
+        auto existing_dog = session->GetDogById(dog_.Restore().GetId());
+        if (existing_dog) {
+            return std::make_shared<player::Player>(existing_dog, session);
+        }
+
+        // Если собака отсутствует, создаём её
+        auto dog = std::make_shared<model::Dog>(dog_.Restore());
+        session->AddDog(dog);
+
+        return std::make_shared<player::Player>(dog, session);
+    }
+
 
     private:
         serialization::DogSer dog_;

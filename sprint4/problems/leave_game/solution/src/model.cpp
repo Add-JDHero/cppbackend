@@ -96,14 +96,13 @@ using namespace std::literals;
             // Удаляем офис из вектора, если не удалось вставить в unordered_map
             offices_.pop_back();
             throw;
-            throw;
         }
     }
     
     Dog::Dog(State state, std::string name)
         : state_(std::move(state))
         , name_(std::move(name)) {
-        state_.id = general_id_++;
+        general_id_++;
     }
 
     Dog::Dog(std::string_view name) : name_(std::string(name)) {
@@ -221,9 +220,11 @@ using namespace std::literals;
         return id_;
     }
 
-    void GameSession::AddDog(std::shared_ptr<Dog> dog) {
+    void GameSession::AddDog(std::shared_ptr<Dog> dog, bool is_deserialized) {
         if (dogs_.count(dog->GetId()) == 0) {
-            dog->SetRandomPosition(GenerateRandomRoadPosition());
+            if (!is_deserialized) {
+                dog->SetRandomPosition(GenerateRandomRoadPosition());
+            }
             dogs_.insert({dog->GetId(), dog});
             dogs_vector_.push_back(dog);
         }
@@ -382,7 +383,12 @@ using namespace std::literals;
                     int loot_id = loots_[event.item_id].id;
                     int loot_type = loots_[event.item_id].type;
                     player->AddToBag(loot_id, loot_type);
-                    collected_loot_ids.insert(event.item_id);
+
+                    // std::cerr << "[DEBUG] Player " << event.gatherer_id
+                    //     << " collected loot ID: " << loots_[event.item_id].id
+                    //     << " (Index: " << event.item_id << ")" << std::endl;
+
+                    collected_loot_ids.insert(loots_[event.item_id].id);
                 }
             }
 
@@ -394,9 +400,11 @@ using namespace std::literals;
 
     void GameSession::RemoveCollectedLoot(const std::unordered_set<size_t>& collected_loot_ids) {
         std::vector<LostObject> new_loots;
-        for (size_t i = 0; i < loots_.size(); ++i) {
-            if (!collected_loot_ids.count(i)) {
-                new_loots.push_back(loots_[i]);
+        for (const auto& loot : loots_) {
+            if (!collected_loot_ids.count(loot.id)) {
+                new_loots.push_back(loot);
+            } else {
+                std::cerr << "[DEBUG] Removing loot ID: " << loot.id << std::endl;
             }
         }
         loots_ = std::move(new_loots);
@@ -564,8 +572,8 @@ using namespace std::literals;
         while (loots_.size() < dogs_.size() && count > 0) {
             loots_.push_back(
                 LostObject{.id = lost_object_id_++, 
-                             .type = static_cast<uint64_t>(rand() % loot_types_count), 
-                             .position = GenerateRandomRoadPosition()}
+                           .type = static_cast<uint64_t>(rand() % loot_types_count), 
+                           .position = GenerateRandomRoadPosition()}
                 );
             --count;
         }
@@ -602,6 +610,8 @@ using namespace std::literals;
     }
 
     void LootService::ConfigureLootGenerator(double period, double probability) {
+        loot_config_.period = period;
+        loot_config_.probability = probability;
         auto period_in_ms = 
             std::chrono::milliseconds(static_cast<int>(loot_config_.period * 1000));
         loot_gen_ = loot_gen::LootGenerator(period_in_ms, probability);
@@ -634,11 +644,11 @@ using namespace std::literals;
     }
 
     void LootService::GenerateLoot(double delta_time) {
-        unsigned dogs_count = /* session->GetDogs().size() */ 5;
         std::chrono::milliseconds interval = 
             std::chrono::milliseconds(static_cast<int>(delta_time));
 
         for (const auto& session : common_data_->sessions_) {
+            unsigned dogs_count = session->GetDogs().size();
             unsigned loot_count = session->GetLootCount();
             int loot_types_count = 
                 common_data_->mapId_to_lootTypes_[session->GetMapId()]->size();

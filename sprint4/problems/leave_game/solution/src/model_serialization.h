@@ -1,5 +1,6 @@
 #pragma once
 
+#include "loot_generator.h"
 #include "model.h"
 #include "player.h"
 // #include "application.h"
@@ -310,10 +311,12 @@ namespace serialization {
 
             model::GameSession session(data.maps_[map_index], lootId_to_value_);
 
+            session.LootRecovery(std::move(lost_objects_));
+
             for (const auto& dog_ser_ptr : dogs_vector_) {
                 auto dog = std::make_shared<model::Dog>(dog_ser_ptr->Restore());
                 dog->SetDefaultDogSpeed(session.GetMapDefaultSpeed());
-                session.AddDog(dog);
+                session.AddDog(dog, true);
             }
 
             return session;
@@ -420,7 +423,8 @@ namespace serialization {
         explicit GameSer(const model::Game& game)
             : serialized_data_(game.GetCommonData())
             , default_dog_speed_(game.GetDefaultDogSpeed())
-            , default_tick_time_(game.GetDefaultTickTime()) {
+            , default_tick_time_(game.GetDefaultTickTime())
+            , config(game.GetGeneratorConfig()) {
         }
 
         template <typename Archive>
@@ -433,7 +437,7 @@ namespace serialization {
         [[nodiscard]] model::Game Restore() const {
             model::Game game;
 
-            game.LoadGameData(std::move(serialized_data_.Restore()));
+            game.LoadGameData(std::move(serialized_data_.Restore()), config);
             game.SetDefaultDogSpeed(default_dog_speed_);
             game.SetDefaultTickTime(default_tick_time_);
 
@@ -445,109 +449,7 @@ namespace serialization {
 
         double default_dog_speed_ = 1.0;
         double default_tick_time_ = 0;
+        loot_gen::LootGeneratorConfig config;
     };
 
 } // namespace serialization
-
-// namespace app_serialization {
-//     class PlayerSer {
-//     public:
-//         PlayerSer() = default;
-        
-//         PlayerSer(const player::Player& player) 
-//             : dog_(serialization::DogSer(*player.GetDog()))
-//             , game_session_id_(player.GetGameSession()->GetSessionId()) { // Сохраняем только ID сессии
-//         }
-
-//         template <typename Archive>
-//         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
-//             ar & dog_;
-//             ar & game_session_id_;
-//         }
-
-//         [[nodiscard]] std::shared_ptr<player::Player> Restore(model::CommonData& data) const {
-//             auto dog = std::make_shared<model::Dog>(dog_.Restore());
-
-//             // Ищем сессию по ID
-//             auto session_it = data.game_sessions_id_to_index_.find(game_session_id_);
-//             if (session_it == data.game_sessions_id_to_index_.end()) {
-//                 throw std::runtime_error("GameSession not found for Player!");
-//             }
-            
-//             std::shared_ptr<model::GameSession> session = data.sessions_[session_it->second];
-
-//             return std::make_shared<player::Player>(dog, session);
-//         }
-
-//     private:
-//         serialization::DogSer dog_;
-//         model::GameSession::Id game_session_id_;
-//     };
-
-//     class PlayerTokensSer {
-//     public:
-//         PlayerTokensSer() = default;
-        
-//         explicit PlayerTokensSer(const app::PlayerTokens& player_tokens) {
-//             for (const auto& [token, player] : player_tokens.GetTokenMap()) {
-//                 tokens_.emplace_back(token, player->GetDogId());
-//             }
-//         }
-
-//         template <typename Archive>
-//         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
-//             ar & tokens_;
-//         }
-
-//         [[nodiscard]] std::unordered_map<app::Token, std::shared_ptr<player::Player>, util::TaggedHasher<app::Token>>
-//             Restore(const app::Players& players) const {
-//             std::unordered_map<app::Token, std::shared_ptr<player::Player>, util::TaggedHasher<app::Token>> restored_tokens;
-
-//             for (const auto& [token, dog_id] : tokens_) {
-//                 auto player = players.FindPlayerByDogId(model::Dog::Id(dog_id));
-//                 if (player) {
-//                     restored_tokens[token] = player;
-//                 }
-//             }
-
-//             return restored_tokens;
-//         }
-
-//     private:
-//         std::vector<std::pair<app::Token, uint64_t>> tokens_;
-//     };
-
-//      class PlayersSer {
-//     public:
-//         PlayersSer() = default;
-        
-//         explicit PlayersSer(const app::Players& players) {
-//             for (const auto& [dog_id, player] : players.GetPlayers()) {
-//                 players_.emplace_back(*player);
-//                 dog_ids_.push_back(dog_id);
-//             }
-//         }
-
-//         template <typename Archive>
-//         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
-//             ar & players_;
-//             ar & dog_ids_;
-//         }
-
-//         [[nodiscard]] app::Players&& Restore(model::CommonData& data) const {
-//             app::Players players;
-//             for (size_t i = 0; i < players_.size(); ++i) {
-//                 auto player = players_[i].Restore(data);
-//                 model::Dog::Id dog_id = model::Dog::Id(dog_ids_[i]);
-//                 players.Add(player->GetDog(), player->GetGameSession());
-//             }
-
-//             return std::move(players);
-//         }
-
-//     private:
-//         std::vector<PlayerSer> players_;
-//         std::vector<uint64_t> dog_ids_;
-//     };
-// }
-
