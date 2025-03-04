@@ -301,9 +301,9 @@ namespace model {
         using Id = uint64_t;
         using Dogs = std::unordered_map<Dog::Id, std::shared_ptr<Dog>>;
         using LostObjects = std::vector<LostObject>;
-        using LootIdToValue = std::unordered_map<int, int>;
+        using LootTypeToValue = std::unordered_map<int, int>;
     public:
-        GameSession(const Map& map, std::unordered_map<int, int> loot_values);
+        GameSession(const Map& map, std::unordered_map<int, int> loot_values,  bool is_deserialized = false);
 
         Map::Id GetMapId() const;
         Id GetSessionId() const;
@@ -314,9 +314,14 @@ namespace model {
         const std::vector<std::string> GetPlayersNames() const;
         const std::vector<State> GetPlayersUnitStates() const;
         const LostObjects GetLostObjects() const { return loots_; }
-        const LootIdToValue GetLootValuesTable() const { return lootId_to_value_; }
+        const LootTypeToValue GetLootValuesTable() const { return lootId_to_value_; }
+
+        void SetDeserializedSessionId(Id id) { id_ = id; }
+        void SetDeserializedObjVal(uint64_t lost_obect_id) { lost_object_id_ = lost_obect_id; }
+        uint64_t GetLostObjectsVal() const noexcept { return lost_object_id_; };
 
         int GetLootValue(int loot_type) const;
+
 
         std::shared_ptr<Dog> GetDogById(model::Dog::Id id) {
             if (dogs_.count(id)) {
@@ -397,7 +402,7 @@ namespace model {
         std::vector<std::shared_ptr<Dog>> dogs_vector_;
         std::unordered_map<int, Region> regions_;
 
-        LootIdToValue lootId_to_value_;
+        LootTypeToValue lootId_to_value_;
         LostObjects loots_;
         Id id_;
 
@@ -410,14 +415,17 @@ namespace model {
     struct CommonData {
         using Maps = std::vector<Map>;
         using MapIdHasher = util::TaggedHasher<Map::Id>;
-        using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;
+        using MapIdToIndex = 
+            std::unordered_map<Map::Id, size_t, MapIdHasher>;
         using MapIdToGameSessions = 
             std::unordered_map<Map::Id, GameSession::Id, MapIdHasher>;
         // using MapIdToLootTypesCount = std::unordered_map<Map::Id, int, util::TaggedHasher<Map::Id>>;
         using MapLootTypes =
-            std::unordered_map<model::Map::Id, 
-                              std::shared_ptr<boost::json::array>,
-                              util::TaggedHasher<model::Map::Id>>;
+            std::unordered_map<
+                model::Map::Id, 
+                std::shared_ptr<boost::json::array>,
+                util::TaggedHasher<model::Map::Id>
+            >;
         
         using GameSessions = std::vector<std::shared_ptr<GameSession>>;
         using GameSessionIdToIndex = 
@@ -549,7 +557,6 @@ namespace model {
         SessionService& GetSessionService() { return *session_service_; }
         MapService& GetMapService() { return map_service_; }
         LootService& GetLootService() { return *loot_service_; }
-
 
     private:
         double default_dog_speed_ = 1.0;

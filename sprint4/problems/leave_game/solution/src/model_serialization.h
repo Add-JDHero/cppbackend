@@ -7,6 +7,7 @@
 // #include "application.h"
 
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <boost/json.hpp>
@@ -289,7 +290,8 @@ namespace serialization {
             : map_(MapSer(map))
             , lootId_to_value_(std::move(session.GetLootValuesTable()))
             , lost_objects_(std::move(session.GetLostObjects()))
-            , id_(session.GetSessionId()){
+            , id_(session.GetSessionId())
+            , lost_object_id_(session.GetLostObjectsVal()){
                 for (const auto& dog : session.GetDogsVector()) {
                     auto ser_dog_ptr = std::make_shared<DogSer>(*dog);
                     dogs_vector_.push_back(ser_dog_ptr);
@@ -301,16 +303,20 @@ namespace serialization {
         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
             ar & map_;
             ar & lootId_to_value_;
-            ar & lost_objects_;
             ar & dogs_vector_;
+            ar & lost_objects_;
+            ar & lost_object_id_;
+            ar & id_;
         }
 
         [[nodiscard]] model::GameSession Restore(const model::CommonData& data) const {
             model::Map restored_map = map_.Restore();
             size_t map_index = data.map_id_to_index_.at(restored_map.GetId());
 
-            model::GameSession session(data.maps_[map_index], lootId_to_value_);
+            model::GameSession session(data.maps_[map_index], lootId_to_value_, true);
+            session.SetDeserializedSessionId(id_);
 
+            session.SetDeserializedObjVal(lost_object_id_);
             session.LootRecovery(std::move(lost_objects_));
 
             for (const auto& dog_ser_ptr : dogs_vector_) {
@@ -329,7 +335,8 @@ namespace serialization {
         
         MapSer map_;
         
-        model::GameSession::LootIdToValue lootId_to_value_;
+        uint64_t lost_object_id_ = 0;
+        model::GameSession::LootTypeToValue lootId_to_value_;
         model::GameSession::LostObjects lost_objects_;
     };
 

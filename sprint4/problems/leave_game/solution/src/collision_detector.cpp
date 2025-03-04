@@ -33,9 +33,11 @@ std::vector<GatheringEvent> FindGatherEvents(
 
     for (size_t g = 0; g < provider.GatherersCount(); ++g) {
         Gatherer gatherer = provider.GetGatherer(g);
+        
         if (eq_pt(gatherer.start_pos, gatherer.end_pos)) {
             continue;
         }
+        
         for (size_t i = 0; i < provider.ItemsCount(); ++i) {
             Item item = provider.GetItem(i);
             auto collect_result

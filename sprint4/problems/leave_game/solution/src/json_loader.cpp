@@ -271,9 +271,8 @@ namespace json_loader {
             // std::cout << json::serialize(states_json[std::to_string(state.id)]) << std::endl;
         }
 
-        int i = 0;
         for (const auto& obj : lost_objects) {
-            lost_objects_json[std::to_string(i++)]  = 
+            lost_objects_json[std::to_string(obj.id)]  = 
                 json_loader::StateSerializer::SerializeSingleLostObject(obj);
             // std::cout << json::serialize(states_json[std::to_string(state.id)]) << std::endl;
         }

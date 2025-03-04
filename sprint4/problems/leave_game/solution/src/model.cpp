@@ -177,19 +177,19 @@ using namespace std::literals;
         auto& map = common_data_->maps_[common_data_->map_id_to_index_[map_id]];
 
         // Наполняем lootId_to_value_
-        std::unordered_map<int, int> loot_values;
+        std::unordered_map<int, int> type_to_loot_values;
         auto it = common_data_->mapId_to_lootTypes_.find(map_id);
         int item_type = 0;
         if (it != common_data_->mapId_to_lootTypes_.end()) {
             const auto& loot_array = *it->second;
             for (const auto& item : loot_array) {
                 int value = item.at("value").as_int64();
-                loot_values[item_type++] = value;
+                type_to_loot_values[item_type++] = value;
             }
         }
 
         // Создаём GameSession с lootId_to_value_
-        auto result = std::make_shared<GameSession>(map, std::move(loot_values));
+        auto result = std::make_shared<GameSession>(map, std::move(type_to_loot_values));
 
         int index = common_data_->sessions_.size();
         common_data_->sessions_.push_back(result);
@@ -199,11 +199,13 @@ using namespace std::literals;
         return result;
     }
 
-    GameSession::GameSession(const Map& map, std::unordered_map<int, int> loot_values)
+    GameSession::GameSession(const Map& map, std::unordered_map<int, int> loot_values, bool is_deserialized)
         : map_(map)
-        , id_(general_id_++)
         , bag_capacity_(map.GetBagCapacity())
         , lootId_to_value_(std::move(loot_values)) {
+            if (!is_deserialized) {
+                id_= general_id_++;
+            }
         InitializeRegions(map_, regions_);
     }
 
@@ -377,7 +379,7 @@ using namespace std::literals;
                 MovePlayer(dog_id, delta);
             }
 
-            if (collected_loot_ids.count(event.item_id) == 0 && event.item_id < loots_.size()) {
+            if (event.item_id < loots_.size() && collected_loot_ids.count(loots_[event.item_id].id) == 0) {
                 auto& player = dogs_vector_.at(event.gatherer_id);
                 if (player->GetBag().size() < bag_capacity_) {
                     int loot_id = loots_[event.item_id].id;
@@ -652,7 +654,10 @@ using namespace std::literals;
             unsigned loot_count = session->GetLootCount();
             int loot_types_count = 
                 common_data_->mapId_to_lootTypes_[session->GetMapId()]->size();
-            session->GenerateLoot(loot_gen_.Generate(interval, loot_count, dogs_count), loot_types_count);
+            session->GenerateLoot(
+                loot_gen_.Generate(interval, loot_count, dogs_count), 
+                loot_types_count
+            );
         }
     }
 
