@@ -352,7 +352,7 @@ namespace serialization {
 
             for (const auto& session : data.sessions_) {
                 auto index = data.map_id_to_index_.at(session->GetMapId());
-                sessions_.emplace_back(*session, data.maps_[index]);
+                sessions_.push_back(GameSessionSer(*session, data.maps_[index]));
             }
 
             for (const auto& [map_id, loot_ptr] : data.mapId_to_lootTypes_) {

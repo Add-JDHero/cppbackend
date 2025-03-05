@@ -324,7 +324,6 @@ namespace app_serialization {
         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
             std::cout << "Serializing players, count: " << players_.size() << std::endl;
             ar & players_;
-            ar & players_;
             ar & dog_ids_;
         }
 

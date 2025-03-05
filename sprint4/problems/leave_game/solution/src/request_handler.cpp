@@ -5,6 +5,7 @@
 #include "application.h"
 #include "extra_data.h"
 
+#include <boost/json/serialize.hpp>
 #include <chrono>
 #include <cstdint>
 #include <exception>
@@ -458,6 +459,7 @@ namespace http_handler {
         }
 
         auto response_body = app_.GetSerializedGameState(app::Token{token});
+
         return json_response(http::status::ok, std::move(response_body), ContentType::APP_JSON);
     }
 

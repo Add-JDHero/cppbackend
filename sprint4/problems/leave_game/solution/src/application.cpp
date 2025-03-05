@@ -195,7 +195,7 @@ namespace app {
         }
     }
 
-    Application::Application(model::Game& game) 
+Application::Application(model::Game& game) 
         : game_(game) {
     }
 

@@ -102,7 +102,7 @@ using namespace std::literals;
     Dog::Dog(State state, std::string name)
         : state_(std::move(state))
         , name_(std::move(name)) {
-        general_id_++;
+        
     }
 
     Dog::Dog(std::string_view name) : name_(std::string(name)) {
@@ -173,6 +173,15 @@ using namespace std::literals;
         return state_;
     }
 
+    void SessionService::ConfigureSessionData(std::shared_ptr<GameSession> session) {
+        int index = common_data_->sessions_.size();
+
+        common_data_->sessions_.push_back(session);
+        common_data_->game_sessions_id_to_index_[session->GetSessionId()] = index;
+        common_data_->mapId_to_session_index_[session->GetMapId()] = 
+            session->GetSessionId();
+    } 
+
     std::shared_ptr<GameSession> SessionService::CreateGameSession(Map::Id map_id) {
         auto& map = common_data_->maps_[common_data_->map_id_to_index_[map_id]];
 
@@ -191,10 +200,7 @@ using namespace std::literals;
         // Создаём GameSession с lootId_to_value_
         auto result = std::make_shared<GameSession>(map, std::move(type_to_loot_values));
 
-        int index = common_data_->sessions_.size();
-        common_data_->sessions_.push_back(result);
-        common_data_->game_sessions_id_to_index_[result->GetSessionId()] = index;
-        common_data_->mapId_to_session_index_[map_id] = result->GetSessionId();
+        ConfigureSessionData(result);
 
         return result;
     }
@@ -204,8 +210,9 @@ using namespace std::literals;
         , bag_capacity_(map.GetBagCapacity())
         , lootId_to_value_(std::move(loot_values)) {
             if (!is_deserialized) {
-                id_= general_id_++;
+                id_= general_id_;
             }
+            general_id_++;
         InitializeRegions(map_, regions_);
     }
 

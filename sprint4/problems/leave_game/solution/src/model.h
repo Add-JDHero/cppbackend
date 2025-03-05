@@ -474,7 +474,7 @@ namespace model {
         std::shared_ptr<model::GameSession> FindGameSession(model::GameSession::Id session_id) const {
             auto it = common_data_->sessions_[common_data_->game_sessions_id_to_index_[session_id]];
             
-            return std::make_shared<model::GameSession>(*it);
+            return it;
         }
 
         std::shared_ptr<GameSession> 
@@ -483,6 +483,8 @@ namespace model {
         void Tick(std::chrono::milliseconds delta_time);
 
     private:
+            void ConfigureSessionData(std::shared_ptr<GameSession> session);
+
         std::shared_ptr<CommonData> common_data_;
     };
 
