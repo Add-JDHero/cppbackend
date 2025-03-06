@@ -185,21 +185,18 @@ namespace model {
 
         Map(Id id, std::string name) noexcept;
 
-        void SetDefaultDogSpeed(int64_t default_speed);
-
-        double GetDefaultDogSpeed() const;
-
+        double GetDefaultDogSpeed() const noexcept;
         const Id& GetId() const noexcept;
         const std::string& GetName() const noexcept;
         const Buildings& GetBuildings() const noexcept;
         const Roads& GetRoads() const noexcept;
         const Offices& GetOffices() const noexcept;
+        int GetBagCapacity() const noexcept;
 
-        bool IsDefaultDogSpeedValueConfigured() const;
+        bool IsDefaultDogSpeedValueConfigured() const noexcept;
 
-        void SetBagCapacity(int capacity) { bag_capacity_ = capacity; }
-
-        int GetBagCapacity() const { return bag_capacity_; }
+        void SetDefaultDogSpeed(int64_t default_speed);
+        void SetBagCapacity(int capacity);
 
         void AddRoad(const Road& road);
         void AddBuilding(const Building& building);
@@ -215,13 +212,12 @@ namespace model {
         std::string name_;
         Roads roads_;
         Buildings buildings_;
+        OfficeIdToIndex warehouse_id_to_index_;
+        Offices offices_;
 
         double default_dog_speed_ = 1.0;
 
         size_t bag_capacity_ = 3;
-
-        OfficeIdToIndex warehouse_id_to_index_;
-        Offices offices_;
     };
 
     class Dog {
@@ -232,48 +228,35 @@ namespace model {
 
         Dog(std::string_view name);
 
-        const Id GetId() const;
-        const std::string& GetName() const;
+        const Id GetId() const noexcept;
+        const std::string& GetName() const noexcept;
         const Pos& GetPosition() const noexcept;
         const Speed& GetSpeed() const noexcept;
         const Direction& GetDirection() const noexcept;
         const State& GetState() const noexcept;
+        const double GetDefaultDogSpeed() const noexcept;
+        const std::vector<FoundObject>& GetBag() const noexcept;
 
-        const double GetDefaultDogSpeed() const noexcept { return default_dog_speed_; }
+        void AddToBag(uint64_t loot_id, uint64_t loot_type);
+        void AddScore(int score);
 
-        void AddToBag(uint64_t loot_id, uint64_t loot_type) {
-            if (state_.bag.size() < bag_capacity_) {
-                state_.bag.push_back({.id = loot_id, .type = loot_type});
-            }
-        }
-
-        void ClearBag() { state_.bag.clear(); }
-
-        const std::vector<FoundObject>& GetBag() const {
-            return state_.bag;
-        }
-
-        void SetRandomPosition(Pos pos) { state_.position = pos; }
-
-        void SetBagCapacity(size_t capacity) {
-            bag_capacity_ = capacity;
-        }
-
-        void AddScore(int score) { state_.score += score; }
+        void ClearBag();
 
         void SetDefaultDogSpeed(double speed);
         void SetSpeed(double x, double y);
         void SetDogDirSpeed(std::string dir);
+        void SetRandomPosition(Pos pos);
 
         void StopDog();
 
         Pos MoveDog(Pos new_position);
 
     private:
+        void SetBagCapacity(size_t capacity);
 
         State state_;
 
-        double current_speed = 0;
+        // double current_speed = 0;
         double default_dog_speed_ = 0;
 
         size_t bag_capacity_ = 3;
@@ -294,7 +277,10 @@ namespace model {
             double min_x, max_x, min_y, max_y;
 
             bool Contains(const Pos& pos) const {
-                return pos.x >= min_x && pos.x <= max_x && pos.y >= min_y && pos.y <= max_y;
+                return pos.x >= min_x && 
+                       pos.x <= max_x && 
+                       pos.y >= min_y && 
+                       pos.y <= max_y;
             }
         };
 
@@ -303,51 +289,46 @@ namespace model {
         using LostObjects = std::vector<LostObject>;
         using LootTypeToValue = std::unordered_map<int, int>;
     public:
-        GameSession(const Map& map, std::unordered_map<int, int> loot_values,  bool is_deserialized = false);
+        GameSession(const Map& map, 
+                    std::unordered_map<int, int> loot_values,  
+                    bool is_deserialized = false);
 
-        Map::Id GetMapId() const;
-        Id GetSessionId() const;
-        double GetMapDefaultSpeed() const;
-        const Dogs& GetDogs() const;
-        const std::vector<std::shared_ptr<Dog>> GetDogsVector() const { return dogs_vector_; }
+        Map::Id GetMapId() const noexcept;
+        Id GetSessionId() const noexcept;
+        double GetMapDefaultSpeed() const noexcept;
+        const Dogs& GetDogs() const noexcept;
+        const std::vector<std::shared_ptr<Dog>> GetDogsVector() const noexcept { return dogs_vector_; }
         // const std::unordered_map<int, Region> GetRegions() const { return regions_; }
-        const std::vector<std::string> GetPlayersNames() const;
-        const std::vector<State> GetPlayersUnitStates() const;
-        const LostObjects GetLostObjects() const { return loots_; }
-        const LootTypeToValue GetLootValuesTable() const { return lootId_to_value_; }
+        const std::vector<std::string> GetPlayersNames() const noexcept;
+        const std::vector<State> GetPlayersUnitStates() const noexcept;
+        const LostObjects GetLostObjects() const noexcept { return loots_; }
+        const LootTypeToValue GetLootValuesTable() const noexcept { return lootId_to_value_; }
+        uint64_t GetLostObjectsVal() const noexcept { return lost_object_id_; };
+        std::shared_ptr<Dog> GetDogById(model::Dog::Id id) const;
 
         void SetDeserializedSessionId(Id id) { id_ = id; }
         void SetDeserializedObjVal(uint64_t lost_obect_id) { lost_object_id_ = lost_obect_id; }
-        uint64_t GetLostObjectsVal() const noexcept { return lost_object_id_; };
 
         int GetLootValue(int loot_type) const;
 
 
-        std::shared_ptr<Dog> GetDogById(model::Dog::Id id) {
-            if (dogs_.count(id)) {
-                return dogs_[id];
-            }
-            
-            return nullptr;
-        }
-
         uint64_t GetLootCount();
+
         void GenerateLoot(int count, int loot_types_count);
 
         Pos GenerateRandomRoadPosition();
 
-        void LootRecovery(LostObjects loot) {
-            loots_ = std::move(loot);
-        }
+        void LootRecovery(LostObjects loot) { loots_ = std::move(loot); }
 
         std::vector<collision_detector::Gatherer>
         GetGatherers(double delta_time) const;
+
         std::vector<collision_detector::Item>
         GetItems() const;
 
-        void AddDog(std::shared_ptr<Dog> dog, bool is_deserialized = false);
-
         bool HasDog(Dog::Id id);
+
+        void AddDog(std::shared_ptr<Dog> dog, bool is_deserialized = false);
 
         void MovePlayer(Dog::Id id, double delta_time);
 
@@ -417,15 +398,14 @@ namespace model {
         using MapIdHasher = util::TaggedHasher<Map::Id>;
         using MapIdToIndex = 
             std::unordered_map<Map::Id, size_t, MapIdHasher>;
-        using MapIdToGameSessions = 
+
+        using MapIdToGameSessions =
             std::unordered_map<Map::Id, GameSession::Id, MapIdHasher>;
-        // using MapIdToLootTypesCount = std::unordered_map<Map::Id, int, util::TaggedHasher<Map::Id>>;
+
         using MapLootTypes =
-            std::unordered_map<
-                model::Map::Id, 
-                std::shared_ptr<boost::json::array>,
-                util::TaggedHasher<model::Map::Id>
-            >;
+            std::unordered_map<model::Map::Id, 
+                               std::shared_ptr<boost::json::array>,
+                               util::TaggedHasher<model::Map::Id>>;
         
         using GameSessions = std::vector<std::shared_ptr<GameSession>>;
         using GameSessionIdToIndex = 
@@ -452,6 +432,7 @@ namespace model {
         void AddMap(model::Map map);
         
         const model::Map* FindMap(const model::Map::Id& id) const noexcept;
+
         const Maps& GetMaps() const noexcept;
 
     private:
@@ -471,11 +452,8 @@ namespace model {
         std::shared_ptr<model::GameSession> 
         FindGameSession(model::Map::Id map_id);
 
-        std::shared_ptr<model::GameSession> FindGameSession(model::GameSession::Id session_id) const {
-            auto it = common_data_->sessions_[common_data_->game_sessions_id_to_index_[session_id]];
-            
-            return it;
-        }
+        std::shared_ptr<model::GameSession> 
+        FindGameSession(model::GameSession::Id session_id) const;
 
         std::shared_ptr<GameSession> 
         FindGameSessionBySessionId(GameSession::Id session_id);
@@ -483,14 +461,16 @@ namespace model {
         void Tick(std::chrono::milliseconds delta_time);
 
     private:
-            void ConfigureSessionData(std::shared_ptr<GameSession> session);
+        void ConfigureSessionData(std::shared_ptr<GameSession> session);
 
         std::shared_ptr<CommonData> common_data_;
     };
 
     class LootService {
     public:
-        explicit LootService(std::shared_ptr<CommonData> data) : common_data_(data) {}
+        explicit LootService(std::shared_ptr<CommonData> data) 
+            : common_data_(data) {    
+        }
 
         void GenerateLoot(double delta_time);
 
@@ -508,12 +488,13 @@ namespace model {
         std::shared_ptr<CommonData> common_data_;
 
         loot_gen::LootGeneratorConfig loot_config_;
-        loot_gen::LootGenerator loot_gen_{0ms, 0};
+        loot_gen::LootGenerator loot_gen_{0ms, 0.5};
     };
 
     class GameEngine {
     public:
-        GameEngine(std::shared_ptr<SessionService> session_service, std::shared_ptr<LootService> loot_service)
+        GameEngine(std::shared_ptr<SessionService> session_service, 
+                   std::shared_ptr<LootService> loot_service)
             : session_service_(session_service)
             , loot_service_(loot_service) {
         }
@@ -530,36 +511,24 @@ namespace model {
 
     class Game {
     public:
-        Game()
-            : common_data_(std::make_shared<CommonData>())
-            , session_service_(std::make_shared<SessionService>(common_data_))
-            , map_service_(common_data_)
-            , loot_service_(std::make_shared<LootService>(common_data_))
-            , engine_(session_service_, loot_service_) {
-        }
+        explicit Game();
  
-        loot_gen::LootGeneratorConfig GetGeneratorConfig() const { return loot_service_->GetGeneratorConfig(); }
+        void LoadGameData(CommonData data, loot_gen::LootGeneratorConfig config);
+
+        loot_gen::LootGeneratorConfig 
+        GetGeneratorConfig() const { return loot_service_->GetGeneratorConfig(); }
+
         double GetDefaultDogSpeed() const;
         double GetDefaultTickTime() const { return default_tick_time_; }
         CommonData& GetCommonData() const { return *common_data_; }
-
-        void SetDefaultTickTime(double delta_time);
-        void SetDefaultDogSpeed(double default_speed);
-        
-        void LoadGameData(CommonData data, loot_gen::LootGeneratorConfig config) { 
-            common_data_ = std::make_shared<CommonData>(std::move(data));
-            map_service_ = MapService(common_data_);
-            session_service_ = std::make_shared<SessionService>((common_data_));
-            loot_service_ = std::make_shared<LootService>(common_data_);
-            loot_service_->ConfigureLootGenerator(config.period, config.probability);
-            engine_ = GameEngine(session_service_, loot_service_);
-        }
 
         GameEngine& GetEngine() { return engine_; }
         SessionService& GetSessionService() { return *session_service_; }
         MapService& GetMapService() { return map_service_; }
         LootService& GetLootService() { return *loot_service_; }
 
+        void SetDefaultTickTime(double delta_time);
+        void SetDefaultDogSpeed(double default_speed);
     private:
         double default_dog_speed_ = 1.0;
         double default_tick_time_ = 0;

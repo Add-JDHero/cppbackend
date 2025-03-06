@@ -51,11 +51,11 @@ using namespace std::literals;
         default_dog_speed_ = default_speed; 
     }
     
-    double Map::GetDefaultDogSpeed() const {
+    double Map::GetDefaultDogSpeed() const noexcept {
         return default_dog_speed_;
     }
 
-    bool Map::IsDefaultDogSpeedValueConfigured() const {
+    bool Map::IsDefaultDogSpeedValueConfigured() const noexcept {
         return default_dog_speed_ != 1;
     }
 
@@ -83,6 +83,16 @@ using namespace std::literals;
         buildings_.emplace_back(building);
     }
 
+    void Map::SetBagCapacity(int capacity) { 
+        bag_capacity_ = capacity; 
+    }
+
+    int Map::GetBagCapacity() const noexcept { 
+        return bag_capacity_; 
+    }
+
+
+
     void Map::AddOffice(Office office) {
         if (warehouse_id_to_index_.contains(office.GetId())) {
             throw std::invalid_argument("Duplicate warehouse");
@@ -109,10 +119,10 @@ using namespace std::literals;
         state_.id = general_id_++;
     };
 
-    const Dog::Id Dog::GetId() const {
+    const Dog::Id Dog::GetId() const noexcept {
         return state_.id;
     }
-    const std::string& Dog::GetName() const {
+    const std::string& Dog::GetName() const noexcept {
         return name_;
     }
 
@@ -124,8 +134,38 @@ using namespace std::literals;
         return state_.speed;
     }
 
+    const double Dog::GetDefaultDogSpeed() const noexcept {
+         return default_dog_speed_; 
+    }
+
+    void Dog::AddToBag(uint64_t loot_id, uint64_t loot_type) {
+        if (state_.bag.size() < bag_capacity_) {
+            state_.bag.push_back({.id = loot_id, .type = loot_type});
+        }
+    }
+
+    void Dog::ClearBag() { 
+        state_.bag.clear(); 
+    }
+
+    const std::vector<FoundObject>& Dog::GetBag() const noexcept {
+        return state_.bag;
+    }
+
+    void Dog::SetRandomPosition(Pos pos) { 
+        state_.position = pos; 
+    }
+
+    void Dog::SetBagCapacity(size_t capacity) {
+        bag_capacity_ = capacity;
+    }
+
     const Direction& Dog::GetDirection() const noexcept {
         return state_.direction;
+    }
+
+    void Dog::AddScore(int score) { 
+        state_.score += score; 
     }
 
     void Dog::SetSpeed(double x, double y) {
@@ -217,15 +257,15 @@ using namespace std::literals;
     }
 
 
-    Map::Id GameSession::GetMapId() const {
+    Map::Id GameSession::GetMapId() const noexcept {
         return map_.GetId();
     }
 
-    double GameSession::GetMapDefaultSpeed() const {
+    double GameSession::GetMapDefaultSpeed() const noexcept {
         return map_.GetDefaultDogSpeed();
     }
 
-    GameSession::Id GameSession::GetSessionId() const {
+    GameSession::Id GameSession::GetSessionId() const noexcept {
         return id_;
     }
 
@@ -239,11 +279,11 @@ using namespace std::literals;
         }
     }
 
-    const GameSession::Dogs& GameSession::GetDogs() const {
+    const GameSession::Dogs& GameSession::GetDogs() const noexcept {
         return dogs_;
     }
 
-    const std::vector<std::string> GameSession::GetPlayersNames() const {
+    const std::vector<std::string> GameSession::GetPlayersNames() const noexcept {
         std::vector<std::string> names;
         for (const auto& [dog_id, dog]: dogs_) {
             names.push_back(dog->GetName());
@@ -252,7 +292,7 @@ using namespace std::literals;
         return names;
     }
 
-    const std::vector<State> GameSession::GetPlayersUnitStates() const {
+    const std::vector<State> GameSession::GetPlayersUnitStates() const noexcept {
         std::vector<State> dogs;
         for (const auto& dog: dogs_vector_) {
             dogs.push_back(dog->GetState());
@@ -573,6 +613,14 @@ using namespace std::literals;
         return dis(gen);
     }
 
+    std::shared_ptr<Dog> GameSession::GetDogById(model::Dog::Id id) const {
+        if (dogs_.count(id)) {
+            return dogs_.at(id);
+        }
+        
+        return nullptr;
+    }
+
     uint64_t GameSession::GetLootCount() {
         return loots_.size();
     }
@@ -606,12 +654,30 @@ using namespace std::literals;
         return common_data_->maps_;
     }
 
+    Game::Game()
+        : common_data_(std::make_shared<CommonData>())
+        , session_service_(std::make_shared<SessionService>(common_data_))
+        , map_service_(common_data_)
+        , loot_service_(std::make_shared<LootService>(common_data_))
+        , engine_(session_service_, loot_service_) {
+    }
+
     void Game::SetDefaultDogSpeed(double default_speed) {
         default_dog_speed_ = default_speed; 
     }
 
     void Game::SetDefaultTickTime(double delta_time) {
         default_tick_time_ = delta_time;
+    }
+
+    void Game::LoadGameData(CommonData data, 
+                            loot_gen::LootGeneratorConfig config) { 
+        common_data_ = std::make_shared<CommonData>(std::move(data));
+        map_service_ = MapService(common_data_);
+        session_service_ = std::make_shared<SessionService>((common_data_));
+        loot_service_ = std::make_shared<LootService>(common_data_);
+        loot_service_->ConfigureLootGenerator(config.period, config.probability);
+        engine_ = GameEngine(session_service_, loot_service_);
     }
 
     void LootService::ConfigureLootTypes(CommonData::MapLootTypes loot_types) {
@@ -638,6 +704,15 @@ using namespace std::literals;
         }
 
         return CreateGameSession(map_id);
+    }
+
+    std::shared_ptr<model::GameSession> 
+    SessionService::FindGameSession(model::GameSession::Id session_id) const {
+        auto it = common_data_->sessions_[
+            common_data_->game_sessions_id_to_index_[session_id]
+        ];
+        
+        return it;
     }
 
     void SessionService::Tick(std::chrono::milliseconds delta_time) {
