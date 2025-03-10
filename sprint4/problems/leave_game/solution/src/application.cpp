@@ -14,6 +14,7 @@
 #include <boost/json/object.hpp>
 #include <iomanip>
 #include <exception>
+#include <stdexcept>
 #include <unordered_set>
 
 namespace app {
@@ -283,13 +284,105 @@ Application::Application(model::Game& game, db::ConnectionPool& pool)
         game_.SetDefaultTickTime(game.GetDefaultTickTime());
     }
 
+    std::vector<Application::PlayerMovementInfo> Application::PlayersInfoSnapstot() const {
+        std::vector<PlayerMovementInfo> result;
+        result.reserve(players_.GetPlayers().size());
+
+        for (const auto& player : players_.GetPlayers()) {
+            result.push_back({   
+                    player.second->GetDogName(), 
+                    player.second->GetDogPos(),
+                    player.second->GetDogSpeed(),
+                });
+        }
+
+        return result;
+    }
+
     void Application::LoadGameFromFilie() {
         listener_->LoadStateFromFile();
     }
 
-    void Application::Tick(milliseconds delta_time) const {
-        std::unordered_set<std::shared_ptr<model::Dog>> 
-            afk_players = game_.GetEngine().Tick(delta_time);
+    bool Application::IsMoving(Application::PlayerMovementInfo& old, 
+                               Application::PlayerMovementInfo& current) const {
+        // bool is_moving = current.speed.x != 0 || current.speed.y != 0; 
+        // return is_moving || old.pos != current.pos;
+        return 0;
+    }
+
+    void Application::RemoveAFKPlayer(std::shared_ptr<player::Player> player) {
+        auto dog_id = player->GetDogId();
+        auto map_id = player->GetGameSession()->GetMapId();
+        players_.Remove(dog_id, map_id);
+    }
+
+    bool Application::IsAFK(Application::PlayerMovementInfo& old, 
+                            Application::PlayerMovementInfo& current) const {
+        bool is_not_moving = current.speed.x == 0 && current.speed.y == 0; 
+        return is_not_moving || old.pos == current.pos;
+    }
+
+    void Application::SavePlayerStatsToDB(std::shared_ptr<model::Dog> dog) {
+        try {
+            auto connection = connection_pool_.GetConnection();
+
+            pqxx::work work{*connection};
+            
+            work.exec_prepared("insert_retire",
+                dog->GetName(),
+                dog->GetState().score,
+                dog->CalcPlayTime()
+            );
+
+            work.commit();
+        } catch (const std::exception& e) {
+            throw std::runtime_error(e.what());
+        }
+    }
+
+    void Application::RemoveAFKPlayers(double delta_time,
+                                       std::vector<PlayerMovementInfo>& old,
+                                       std::vector<PlayerMovementInfo>& current) {
+        if (old.size() != current.size()) { 
+            throw std::logic_error("different size of players info (application layer)");
+        }
+
+        std::vector<std::shared_ptr<player::Player>> afk_players;
+
+        for (auto old_it = old.begin(), current_it = current.begin(); 
+             old_it != old.end() && current_it != current.end();
+             ++old_it, ++current_it) {
+
+            auto player_token = 
+                players_.FindPlayerByName(old_it->dog_name.data());
+            auto player = players_.GetPlayerByToken(player_token.value());
+            
+            if (IsAFK(*old_it, *current_it)) {                
+                auto play_time = player->GetLastMoveTime();
+                play_time += delta_time;
+                player->SetLastMoveTime(play_time);
+
+                if (play_time > dog_retirement_time_) {
+                    SavePlayerStatsToDB(player->GetDog());
+
+                    RemoveAFKPlayer(player);
+                }
+            } else {
+                player->SetLastMoveTime(0);
+            }
+        }
+
+        for (auto& player : afk_players) {
+            RemoveAFKPlayer(player);
+        }
+    }
+
+    void Application::Tick(milliseconds delta_time) {
+        auto old = PlayersInfoSnapstot();
+        game_.GetEngine().Tick(delta_time);
+        auto current = PlayersInfoSnapstot();
+
+        RemoveAFKPlayers(delta_time.count(), old, current);
 
         if (listener_) {
             listener_->OnTick(delta_time);

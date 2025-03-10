@@ -506,7 +506,9 @@ using namespace std::literals;
     }
 
     bool Dog::IsMoving(model::Pos new_pos) const {
-        bool is_moving = this->state_.speed.x != 0 || this->state_.speed.y != 0; 
+        bool is_moving = this->state_.speed.x != 0 || 
+            this->state_.speed.y != 0; 
+
         return is_moving || new_pos != this->state_.position;
     }
 
@@ -562,20 +564,20 @@ using namespace std::literals;
         // BOOST_LOG_TRIVIAL(info) << "SavePlayerStatsToDB completed successfully.";
     }
 
-    void GameSession::RemoveAFKPlayers(std::unordered_map<Dog::Id, Pos> new_positions, 
-                                       double delta_time) {
-        std::vector<Dog::Id> afk_players;
+    // void GameSession::RemoveAFKPlayers(std::unordered_map<Dog::Id, Pos> new_positions, 
+    //                                    double delta_time) {
+    //     std::vector<Dog::Id> afk_players;
 
-        for (auto& [dog_id, dog] : dogs_) {
-            if (dog->IsAfk(delta_time, dog_retirement_time_, new_positions[dog_id])) {
-                afk_players.push_back(dog_id);
-            }
-        }
+    //     for (auto& [dog_id, dog] : dogs_) {
+    //         if (dog->IsAfk(delta_time, dog_retirement_time_, new_positions[dog_id])) {
+    //             afk_players.push_back(dog_id);
+    //         }
+    //     }
 
-        for (const auto& dog_id : afk_players) {
-            RetirePlayer(dog_id);
-        }
-    }
+    //     for (const auto& dog_id : afk_players) {
+    //         RetirePlayer(dog_id);
+    //     }
+    // }
         
     void GameSession::Tick(double delta_time) {
         using namespace collision_detector;
@@ -585,7 +587,7 @@ using namespace std::literals;
             ComputeNewPositions(delta_time);
 
         // 2. Удаляем афк игроков
-        RemoveAFKPlayers(new_positions, delta_time);
+        // RemoveAFKPlayers(new_positions, delta_time);
 
         // 3. Определяем события сбора предметов
         std::vector<GatheringEvent> events = 

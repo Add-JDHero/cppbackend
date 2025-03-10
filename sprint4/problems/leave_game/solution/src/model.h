@@ -366,7 +366,7 @@ namespace model {
     
     private:
 
-        void RemoveAFKPlayers(std::unordered_map<Dog::Id, Pos> new_positions, 
+        void RemoveAFKPlayer(std::unordered_map<Dog::Id, Pos> new_positions, 
                               double delta_time);
 
         Pos CalculateNewPosition(const Pos& position, const Speed& speed, double delta_time);
@@ -548,8 +548,7 @@ namespace model {
         }
 
         void Tick(std::chrono::milliseconds delta_time) {
-            std::unordered_set<std::shared_ptr<model::Dog>> afk_players =
-                session_service_->Tick(delta_time);
+            session_service_->Tick(delta_time);
             loot_service_->GenerateLoot(delta_time.count());
         }
 

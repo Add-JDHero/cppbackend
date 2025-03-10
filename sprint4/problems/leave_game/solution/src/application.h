@@ -130,14 +130,22 @@ namespace app {
         }
 
     private:
+        using IdToName = std::pair<uint64_t, std::string>;
         PlayerTokens player_tokens_;
-        std::unordered_map<std::pair<uint64_t, std::string>, 
-            std::shared_ptr<player::Player>, boost::hash<std::pair<uint64_t, std::string>>> players_;
+        std::unordered_map<IdToName, 
+                           std::shared_ptr<player::Player>, 
+                           boost::hash<std::pair<uint64_t, std::string>>> players_;
 
     };
 
     class Application {
     public:
+        struct PlayerMovementInfo {
+            std::string_view dog_name;
+            model::Pos pos;
+            model::Speed speed;
+        };
+
         struct PlayerInfo {
             Token token;
             model::Dog::Id id;
@@ -182,7 +190,7 @@ namespace app {
         PlayerInfo AddPlayer(const std::string& player_name, 
                              std::shared_ptr<model::GameSession> session);
 
-        void Tick(milliseconds delta_time) const;
+        void Tick(milliseconds delta_time);
 
         serialization::GameSer SerializeGame() const { 
             return serialization::GameSer(game_); 
@@ -195,7 +203,24 @@ namespace app {
 
         void LoadGameFromFilie();
 
+
     private:
+        bool IsMoving(Application::PlayerMovementInfo& old, 
+                      Application::PlayerMovementInfo& current) const;
+
+        bool IsAFK(Application::PlayerMovementInfo& old, 
+                   Application::PlayerMovementInfo& current) const;
+
+        void RemoveAFKPlayer(std::shared_ptr<player::Player> player);
+
+        void RemoveAFKPlayers(double delta_time,
+                              std::vector<PlayerMovementInfo>& old,
+                              std::vector<PlayerMovementInfo>& current);
+
+        void SavePlayerStatsToDB(std::shared_ptr<model::Dog> dog);
+
+        std::vector<PlayerMovementInfo> PlayersInfoSnapstot() const;
+
         PlayerInfo GetPlayerInfo(const std::string& name);
 
         bool HasPlayerByName(const std::string& name) const;
@@ -213,6 +238,8 @@ namespace app {
         Token FindTokenByPlayer(std::shared_ptr<player::Player> player);
 
         db::ConnectionPool& connection_pool_;
+
+        double dog_retirement_time_ = 15;
 
 		model::Game& game_;
 		Players players_;
