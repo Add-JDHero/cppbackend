@@ -316,10 +316,17 @@ Application::Application(model::Game& game, db::ConnectionPool& pool)
         players_.Remove(dog_id, map_id);
     }
 
-    bool Application::IsAFK(Application::PlayerMovementInfo& old, 
-                            Application::PlayerMovementInfo& current) const {
-        bool is_not_moving = current.speed.x == 0 && current.speed.y == 0; 
-        return is_not_moving || old.pos == current.pos;
+    bool Application::IsAFK(const Application::PlayerMovementInfo& old, 
+                            const Application::PlayerMovementInfo& current) const {
+        constexpr double EPSILON = 1e-6;
+
+        bool is_not_moving = std::abs(current.speed.x) < EPSILON && 
+                            std::abs(current.speed.y) < EPSILON;
+
+        bool positions_equal = std::abs(old.pos.x - current.pos.x) < EPSILON &&
+                            std::abs(old.pos.y - current.pos.y) < EPSILON;
+
+        return is_not_moving || positions_equal;
     }
 
     void Application::SavePlayerStatsToDB(std::shared_ptr<model::Dog> dog) {
@@ -365,7 +372,7 @@ Application::Application(model::Game& game, db::ConnectionPool& pool)
                 if (play_time > dog_retirement_time_) {
                     SavePlayerStatsToDB(player->GetDog());
 
-                    RemoveAFKPlayer(player);
+                    afk_players.push_back(player);
                 }
             } else {
                 player->SetLastMoveTime(0);

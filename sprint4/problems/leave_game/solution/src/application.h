@@ -208,8 +208,8 @@ namespace app {
         bool IsMoving(Application::PlayerMovementInfo& old, 
                       Application::PlayerMovementInfo& current) const;
 
-        bool IsAFK(Application::PlayerMovementInfo& old, 
-                   Application::PlayerMovementInfo& current) const;
+        bool IsAFK(const Application::PlayerMovementInfo& old, 
+                   const Application::PlayerMovementInfo& current) const;
 
         void RemoveAFKPlayer(std::shared_ptr<player::Player> player);
 
@@ -239,7 +239,7 @@ namespace app {
 
         db::ConnectionPool& connection_pool_;
 
-        double dog_retirement_time_ = 15;
+        double dog_retirement_time_ = 15000;
 
 		model::Game& game_;
 		Players players_;
