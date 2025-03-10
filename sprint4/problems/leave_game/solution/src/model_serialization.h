@@ -1,5 +1,6 @@
 #pragma once
 
+#include "database_manager.h"
 #include "loot_generator.h"
 #include "model.h"
 #include "player.h"
@@ -427,11 +428,12 @@ namespace serialization {
     class GameSer {
     public:
         GameSer() = default;
-        explicit GameSer(const model::Game& game)
+        explicit GameSer(model::Game& game)
             : serialized_data_(game.GetCommonData())
             , default_dog_speed_(game.GetDefaultDogSpeed())
             , default_tick_time_(game.GetDefaultTickTime())
-            , config(game.GetGeneratorConfig()) {
+            , config(game.GetGeneratorConfig())
+            , conn_pool_(game.GetSessionService().GetDBConnPool()) {
         }
 
         template <typename Archive>
@@ -448,6 +450,8 @@ namespace serialization {
             game.SetDefaultDogSpeed(default_dog_speed_);
             game.SetDefaultTickTime(default_tick_time_);
 
+            game.SetDBConnPool(conn_pool_);
+
             return game;
         }
 
@@ -456,7 +460,10 @@ namespace serialization {
 
         double default_dog_speed_ = 1.0;
         double default_tick_time_ = 0;
+
         loot_gen::LootGeneratorConfig config;
+        
+        db::ConnectionPool* conn_pool_ = nullptr;
     };
 
 } // namespace serialization

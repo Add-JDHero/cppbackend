@@ -9,6 +9,8 @@
 #include <string_view>
 #include <boost/log/utility/manipulators/add_value.hpp>
 #include <boost/json.hpp>
+#include <boost/exception/all.hpp>
+
 
 namespace logging = boost::log;
 

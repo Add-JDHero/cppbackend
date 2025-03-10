@@ -6,6 +6,7 @@
 #include "infrastructure.h"
 #include "player.h"
 #include "model.h"
+#include "database_manager.h"
 
 #include <chrono>
 #include <cstdint>
@@ -142,12 +143,17 @@ namespace app {
             model::Dog::Id id;
         };
 
-        explicit Application(model::Game& game);
+        explicit Application(model::Game& game, 
+                             db::ConnectionPool& pool);
 
         void SetApplicationListener(ApplicationListener& listener);
 
         const std::string GetSerializedPlayersList(const Token& token) const;
         const std::string GetSerializedGameState(const Token& token) const;
+
+        std::string GetGameRecords() const {
+            return game_.GetGameRecords();
+        }
 
         model::MapService& GetGameMapService() {
             return game_.GetMapService();
@@ -205,6 +211,8 @@ namespace app {
                                    std::shared_ptr<model::GameSession> session);
 
         Token FindTokenByPlayer(std::shared_ptr<player::Player> player);
+
+        db::ConnectionPool& connection_pool_;
 
 		model::Game& game_;
 		Players players_;
@@ -322,7 +330,6 @@ namespace app_serialization {
 
         template <typename Archive>
         void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
-            std::cout << "Serializing players, count: " << players_.size() << std::endl;
             ar & players_;
             ar & dog_ids_;
         }

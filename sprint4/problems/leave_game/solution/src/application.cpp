@@ -1,12 +1,20 @@
 #include "application.h"
+#include "database_manager.h"
 #include "handlers.h"
 #include "json_loader.h"
 #include "model.h"
 #include "model_serialization.h"
 #include "player.h"
 #include "type_declarations.h"
+#include "log.h"
+
+#include <boost/log/trivial.hpp>
+#include <boost/exception/all.hpp>
+
 #include <boost/json/object.hpp>
 #include <iomanip>
+#include <exception>
+#include <unordered_set>
 
 namespace app {
     char to_uppercase(unsigned char c) {
@@ -195,8 +203,9 @@ namespace app {
         }
     }
 
-Application::Application(model::Game& game) 
-        : game_(game) {
+Application::Application(model::Game& game, db::ConnectionPool& pool) 
+        : game_(game)
+        , connection_pool_(pool) {
     }
 
     const std::vector<std::string> 
@@ -224,6 +233,8 @@ Application::Application(model::Game& game)
         auto player = 
             players_.GetPlayerByToken(token);
         if (!player) return boost::json::serialize(players_json);
+
+        // for (const auto& )
 
         for (const auto& [dog_name, dog_id] : players_.GetPlayerNamesToId()) {
             players_json[std::to_string(dog_id)] = boost::json::object{
@@ -277,7 +288,8 @@ Application::Application(model::Game& game)
     }
 
     void Application::Tick(milliseconds delta_time) const {
-        game_.GetEngine().Tick(delta_time);
+        std::unordered_set<std::shared_ptr<model::Dog>> 
+            afk_players = game_.GetEngine().Tick(delta_time);
 
         if (listener_) {
             listener_->OnTick(delta_time);
@@ -324,9 +336,9 @@ namespace serialization {
             }
 
             std::filesystem::rename(temp_file, state_file_);
-            std::cout << "Game state saved to " << state_file_ << std::endl;
+            std::cout << "Game state saved to file: " << state_file_ << std::endl;
         } catch (const std::exception& e) {
-            std::cerr << "Error saving game state: " << e.what() << std::endl;
+            throw std::runtime_error(e.what());
         }
     }
 
@@ -354,7 +366,7 @@ namespace serialization {
             
             LoadGameDataFromFile(std::move(g_s));
 
-            std::cout << "Game state restored from " << state_file_ << std::endl;
+            std::cout << "Game state restored from file: "s << state_file_ << std::endl;
         } catch (const std::exception& e) {
             std::cerr << "Error loading game state: " << e.what() << std::endl;
             exit(EXIT_FAILURE);

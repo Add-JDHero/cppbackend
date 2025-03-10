@@ -55,6 +55,7 @@ namespace http_server {
         if (ec) {
             return ReportError(ec, "read"sv);
         }
+        
         HandleRequest(std::move(request_));
     }
 

@@ -288,6 +288,8 @@ class GameState {
     let self = this;
     let allPlayers=[];
 
+    console.table(this.players);
+
     Object.entries(ps).forEach(([id, playerData]) => {
       if (self.players[id]===undefined) {
         self._addPlayer(id, playerData);
@@ -334,6 +336,9 @@ class GameState {
 
   _movePlayerTo(id, playerPos) {
     let self = this;
+    // console.log("Moving player with id:", id);
+    // console.log("Current players on client:", Object.keys(self.players));
+    
     moveActor(self.players[id].object, playerPos['pos'][0], playerPos['pos'][1], playerPos['converted_dir']);
     setAnimation(self.players[id].object, playerPos['speed'][0] != 0 || playerPos['speed'][1] != 0);
 
@@ -418,6 +423,7 @@ class GameState {
         xhr.setRequestHeader("Authorization", "Bearer " + Cookies.get('authToken'));
       }
     }).done(function(x){
+      // console.log("Received game state:", JSON.stringify(x, null, 2));
       self.desiredState = x;
       self.stateTime = performance.now();
       then();

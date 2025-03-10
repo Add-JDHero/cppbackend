@@ -4,6 +4,7 @@
 
 #include "application.h"
 #include "extra_data.h"
+#include "type_declarations.h"
 
 #include <boost/json/serialize.hpp>
 #include <chrono>
@@ -168,7 +169,8 @@ namespace http_handler {
                 url::UrlParser parser(std::string(req.target()));
                 auto path_components = parser.GetComponents();
                 return this->GetMapsRequest(json_response);
-            }));
+            })
+        );
 
         router_->AddRoute({"GET", "HEAD"}, "/api/v1/maps/:", 
             std::make_unique<HTTPResponseMaker>(
@@ -176,37 +178,56 @@ namespace http_handler {
                 url::UrlParser parser(std::string(req.target()));
                 auto map_id = parser.GetLastComponent();
                 return this->GetMapDetailsRequest(json_response, map_id);
-            }));
+            })
+        );
 
         router_->AddRoute({"POST"}, "/api/v1/game/join", 
             std::make_shared<HTTPResponseMaker>(
             [this](const StringRequest& req, const JsonResponseHandler& json_response) -> StringResponse {
                 return this->JoinGame(req, json_response);
-            }));
+            })
+        );
 
         router_->AddRoute({"GET", "HEAD"}, "/api/v1/game/players", 
             std::make_shared<HTTPResponseMaker>(
             [this ](const StringRequest& req, const JsonResponseHandler& json_response) -> StringResponse {
                 return this->GetPlayersRequest(req, json_response);
-            }));
+            })
+        );
 
         router_->AddRoute({"GET", "HEAD"}, "/api/v1/game/state", 
             std::make_shared<HTTPResponseMaker>(
             [this](const StringRequest& req, const JsonResponseHandler& json_response) -> StringResponse {
                 return this->GetGameState(req, json_response);
-            }));
+            })
+        );
             
         router_->AddRoute({"POST"}, "/api/v1/game/player/action", 
             std::make_shared<HTTPResponseMaker>(
             [this](const StringRequest& req, const JsonResponseHandler& json_response) -> StringResponse {
                 return this->MoveUnit(req, json_response);
-            }));
+            })
+        );
 
         router_->AddRoute({"POST"}, "/api/v1/game/tick", 
             std::make_shared<HTTPResponseMaker>(
             [this](const StringRequest& req, const JsonResponseHandler& json_response) -> StringResponse {
                 return this->TickRequest(req, json_response);
-            }));
+            })
+        );
+
+        router_->AddRoute({"GET"}, "/api/v1/game/records", 
+            std::make_shared<HTTPResponseMaker>(
+            [this](const StringRequest& req, const JsonResponseHandler& json_response) -> StringResponse {
+                return this->GetRecordsRequest(json_response);
+            })
+        );
+    }
+
+    StringResponse ApiRequestHandler::GetRecordsRequest(const JsonResponseHandler& json_response) const {
+        auto result = app_.GetGameRecords();
+
+        return json_response(http::status::ok, std::move(result), ContentType::APP_JSON);
     }
 
     StringResponse ApiRequestHandler::GetMapsRequest(const JsonResponseHandler& json_response) const {

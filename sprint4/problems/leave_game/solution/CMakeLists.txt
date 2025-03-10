@@ -7,6 +7,20 @@ set(CXX_STANDARD_REQUIRED ON)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo_multi.cmake)
 conan_basic_setup(TARGETS)
 
+# Указываем путь к заголовкам
+# include_directories(/usr/include/pqxx)
+
+# # Ищем библиотеку
+# find_library(PQXX_LIB pqxx REQUIRED HINTS /usr/lib/aarch64-linux-gnu)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PQXX REQUIRED libpqxx)
+
+# Добавляем найденные пути к заголовкам
+include_directories(${PQXX_INCLUDE_DIRS})
+link_directories(${PQXX_LIBRARY_DIRS})
+
+# Добавляем библиотеку к линковке
 # get_property(importTargets DIRECTORY "${CMAKE_SOURCE_DIR}" PROPERTY IMPORTED_TARGETS)
 # message(STATUS "${importTargets}") 
 
@@ -52,6 +66,12 @@ add_executable(game_server
   src/collision_detector.cpp
   src/model_serialization.h
   src/model_serialization.cpp
+  src/database_manager.h
+  src/database_manager.cpp
 )
 
-target_link_libraries(game_server CONAN_PKG::boost) 
+target_link_libraries(game_server 
+  CONAN_PKG::boost
+  # ${PQXX_LIB}
+  ${PQXX_LIBRARIES}
+) 

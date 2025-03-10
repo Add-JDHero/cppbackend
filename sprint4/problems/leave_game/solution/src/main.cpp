@@ -9,6 +9,7 @@
 #include "request_handler.h"
 #include "ticker.h"
 #include "extra_data.h"
+#include "database_manager.h"
 
 #include <boost/asio/io_context.hpp>
 #include <chrono>
@@ -37,7 +38,6 @@ void RunWorkers(unsigned n, const Fn& fn) {
     }
     fn();
 }
-
 }  // namespace
 
 int main(int argc, const char* argv[]) {
@@ -64,11 +64,18 @@ int main(int argc, const char* argv[]) {
 
         std::chrono::milliseconds tick_time = std::chrono::milliseconds(static_cast<int>(arg.period));
 
+        std::string db_url = std::getenv("DATABASE_URL");
+        const unsigned num_threads = std::thread::hardware_concurrency();
+
+        auto conn_pool = db::CreateConnectionPool(num_threads, db_url.data());
+        db::InitDatabase(conn_pool);
+
         // 1. Загружаем карту из файла и строим модель игры
         model::Game game = json_loader::LoadGame(arg.config);
         game.SetDefaultTickTime(static_cast<double>(tick_time.count()));
+        game.SetDBConnPool(&conn_pool);
 
-        app::Application app(game);
+        app::Application app(game, conn_pool);
 
         serialization::SerializingListener serializer(app, arg.state_file, std::chrono::milliseconds{3500});
         if (!arg.state_file.empty()) {
@@ -79,7 +86,6 @@ int main(int argc, const char* argv[]) {
         }
 
         // 2. Инициализируем io_context
-        const unsigned num_threads = std::thread::hardware_concurrency();
         net::io_context ioc(num_threads);
         net::strand strand = net::make_strand(ioc);
 
