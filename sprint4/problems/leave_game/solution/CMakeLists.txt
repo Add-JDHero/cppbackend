@@ -15,6 +15,7 @@ conan_basic_setup(TARGETS)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PQXX REQUIRED libpqxx)
+find_library(PQ_LIB pq REQUIRED)
 
 # Добавляем найденные пути к заголовкам
 include_directories(${PQXX_INCLUDE_DIRS})
@@ -74,4 +75,5 @@ target_link_libraries(game_server
   CONAN_PKG::boost
   # ${PQXX_LIB}
   ${PQXX_LIBRARIES}
+  ${PQ_LIB}
 ) 

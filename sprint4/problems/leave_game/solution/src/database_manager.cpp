@@ -44,8 +44,9 @@ namespace db {
         pool_.reserve(capacity);
         for (size_t i = 0; i < capacity; ++i) {
             pool_.emplace_back(connection_factory());
-            RegisterPrepQueries(GetConnection());
         }
+        
+        RegisterPrepQueries(GetConnection());
     }
 
     ConnectionPool::ConnectionWrapper ConnectionPool::GetConnection() {
