@@ -330,22 +330,26 @@ Application::Application(model::Game& game, db::ConnectionPool& pool)
     }
 
     
-    std::string Application::GetGameRecords() const {
-
+    std::string Application::GetGameRecords(int from, int to) const {
         try {
-            auto connection_wrap = 
-                connection_pool_.GetConnection();
-            
+            if (from < 0 || to <= from) {
+                throw std::invalid_argument("Invalid range: 'from' must be >= 0 and 'to' > 'from'");
+            }
+
+            auto connection_wrap = connection_pool_.GetConnection();
             pqxx::work work{*connection_wrap};
 
-            pqxx::result result = work.exec(R"(
+            // Запрос с учетом офсета и лимита
+            pqxx::result result = work.exec_params(R"(
                 SELECT name, score, play_time_ms FROM retired_players 
-                ORDER BY score DESC, play_time_ms, name LIMIT 100;
-            )");
+                ORDER BY score DESC, play_time_ms, name 
+                OFFSET $1 LIMIT $2;
+            )", from, to - from);
 
             work.commit();
 
             boost::json::array records_json;
+
             for (const auto& row : result) {
                 boost::json::object record;
                 record["name"] = row["name"].c_str();
@@ -355,15 +359,13 @@ Application::Application(model::Game& game, db::ConnectionPool& pool)
                 records_json.push_back(record);
             }
 
-            std::string response_json = 
-                boost::json::serialize(records_json);
-
-            return response_json;
+            return boost::json::serialize(records_json);
 
         } catch (const std::exception& e) {
             throw std::runtime_error(e.what());
         }
     }
+
 
     void Application::SavePlayerStatsToDB(std::shared_ptr<player::Player> player) {
         try {

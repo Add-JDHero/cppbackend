@@ -219,13 +219,84 @@ namespace http_handler {
         router_->AddRoute({"GET"}, "/api/v1/game/records", 
             std::make_shared<HTTPResponseMaker>(
             [this](const StringRequest& req, const JsonResponseHandler& json_response) -> StringResponse {
-                return this->GetRecordsRequest(json_response);
+                return this->GetRecordsRequest(req, json_response);
             })
         );
     }
 
-    StringResponse ApiRequestHandler::GetRecordsRequest(const JsonResponseHandler& json_response) const {
-        auto result = app_.GetGameRecords();
+    std::unordered_map<std::string, std::string> ParseQueryString(const std::string& query) {
+        std::unordered_map<std::string, std::string> params;
+        
+        size_t start_pos = query.find('?');
+        if (start_pos == std::string::npos) {
+            return params;
+        }
+
+        std::string query_string = query.substr(start_pos + 1);
+        std::istringstream ss(query_string);
+        std::string token;
+
+        while (std::getline(ss, token, '&')) {
+            size_t eq_pos = token.find('=');
+            if (eq_pos != std::string::npos) {
+                std::string key = token.substr(0, eq_pos);
+                std::string value = token.substr(eq_pos + 1);
+                params[key] = value;
+            }
+        }
+
+        return params;
+    }
+
+    std::optional<std::pair<int, int>> ParseQueryParams(const std::string& query) {
+        auto params = ParseQueryString(query);
+        int start = 0;
+        int max_items = 100;
+
+        try {
+            bool has_any_param = false;
+            if (params.find("start") != params.end()) {
+                start = std::stoi(params["start"]);
+                has_any_param = true;
+            } 
+
+            if (params.find("maxItems") != params.end()) {
+                max_items = std::stoi(params["maxItems"]);
+                has_any_param = true;
+            }
+
+            if (has_any_param) {
+                return std::make_pair(start, max_items);
+            }
+            
+            return std::nullopt;
+
+        } catch (...) {
+            return std::nullopt; // Ошибка парсинга
+        }
+
+        return std::nullopt;
+    }
+
+    StringResponse 
+    ApiRequestHandler::GetRecordsRequest(const StringRequest& req,
+                                         const JsonResponseHandler& json_response) const {
+        std::string result;
+
+        auto params = ParseQueryParams(req.body().c_str());
+
+        if (params.has_value()) {
+            int from = params->first;
+            int to = params->second;
+
+            if (to > 100) {
+                return ErrorHandler::MakeBadRequestResponse(json_response);
+            }
+
+            result = app_.GetGameRecords(from, to);
+        } else {
+            result = app_.GetGameRecords();
+        }
 
         return json_response(http::status::ok, std::move(result), ContentType::APP_JSON);
     }

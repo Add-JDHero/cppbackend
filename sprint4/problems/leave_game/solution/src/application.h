@@ -159,7 +159,7 @@ namespace app {
         const std::string GetSerializedPlayersList(const Token& token) const;
         const std::string GetSerializedGameState(const Token& token) const;
 
-        std::string GetGameRecords() const;
+        std::string GetGameRecords(int from = 0, int to = 10) const;
 
         model::MapService& GetGameMapService() {
             return game_.GetMapService();

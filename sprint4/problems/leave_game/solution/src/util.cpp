@@ -130,7 +130,7 @@ namespace util {
         http::response<http::file_body> res;
         res.version(11);  // HTTP/1.1
         res.result(http::status::ok);
-        const std::string_view content_type = MimeType(ExtractFileExtension(file_path));
+        const std::string_view content_type = MimeType(std::string_view{ExtractFileExtension(file_path)});
         res.set(http::field::content_type, content_type);
 
         http::file_body::value_type file;

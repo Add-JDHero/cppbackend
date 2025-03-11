@@ -120,8 +120,9 @@ namespace http_handler {
                                          const JsonResponseHandler& json_response) const;
         StringResponse GetGameState(const StringRequest& req,
                                     const JsonResponseHandler& json_response) const;
-        StringResponse GetRecordsRequest(const JsonResponseHandler& json_response) const;
-
+        StringResponse 
+        GetRecordsRequest(const StringRequest& req,
+                          const JsonResponseHandler& json_response) const;
     private:
 
         template <typename Fn>
