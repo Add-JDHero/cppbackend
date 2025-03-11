@@ -27,6 +27,8 @@ namespace player {
             return dog_->GetName();
         }
 
+        int GetDogScore() const { return dog_->GetState().score; }
+
         double GetLastMoveTime() const { return last_move_time_; }
 
         void SetLastMoveTime(double value) { last_move_time_ = value; }
@@ -35,6 +37,12 @@ namespace player {
         model::Pos GetDogPos() const { return dog_->GetPosition(); }
 
         void MovePlayer(std::string direction = "");
+
+        int CalcPlayTime() const {
+            std::chrono::time_point now = std::chrono::steady_clock::now();
+            return std::chrono::duration_cast<std::chrono::duration<int>>(
+                now - play_time_).count();
+        }
 
         const std::shared_ptr<model::GameSession> GetGameSession() const;
         const std::shared_ptr<model::Dog> GetDog() const { return dog_; }

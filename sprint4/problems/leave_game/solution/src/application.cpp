@@ -329,16 +329,52 @@ Application::Application(model::Game& game, db::ConnectionPool& pool)
         return is_not_moving || positions_equal;
     }
 
-    void Application::SavePlayerStatsToDB(std::shared_ptr<model::Dog> dog) {
+    
+    std::string Application::GetGameRecords() const {
+
+        try {
+            auto connection_wrap = 
+                connection_pool_.GetConnection();
+            
+            pqxx::work work{*connection_wrap};
+
+            pqxx::result result = work.exec(R"(
+                SELECT name, score, play_time_ms FROM retired_players 
+                ORDER BY score DESC, play_time_ms, name LIMIT 100;
+            )");
+
+            work.commit();
+
+            boost::json::array records_json;
+            for (const auto& row : result) {
+                boost::json::object record;
+                record["name"] = row["name"].c_str();
+                record["score"] = row["score"].as<int>();
+                record["playTime"] = row["play_time_ms"].as<int>();
+
+                records_json.push_back(record);
+            }
+
+            std::string response_json = 
+                boost::json::serialize(records_json);
+
+            return response_json;
+
+        } catch (const std::exception& e) {
+            throw std::runtime_error(e.what());
+        }
+    }
+
+    void Application::SavePlayerStatsToDB(std::shared_ptr<player::Player> player) {
         try {
             auto connection = connection_pool_.GetConnection();
 
             pqxx::work work{*connection};
             
             work.exec_prepared("insert_retire",
-                dog->GetName(),
-                dog->GetState().score,
-                dog->CalcPlayTime()
+                player->GetDogName(),
+                player->GetDogScore(),
+                player->CalcPlayTime()
             );
 
             work.commit();
@@ -370,7 +406,7 @@ Application::Application(model::Game& game, db::ConnectionPool& pool)
                 player->SetLastMoveTime(play_time);
 
                 if (play_time > dog_retirement_time_) {
-                    SavePlayerStatsToDB(player->GetDog());
+                    SavePlayerStatsToDB(player);
 
                     afk_players.push_back(player);
                 }

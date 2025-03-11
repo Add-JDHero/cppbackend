@@ -249,8 +249,6 @@ using namespace std::literals;
 
         ConfigureSessionData(result);
 
-        result->SetDBConnPool(this->GetDBConnPool());
-
         return result;
     }
 
@@ -504,80 +502,6 @@ using namespace std::literals;
             MovePlayer(dog_id, remaining_time);
         }
     }
-
-    bool Dog::IsMoving(model::Pos new_pos) const {
-        bool is_moving = this->state_.speed.x != 0 || 
-            this->state_.speed.y != 0; 
-
-        return is_moving || new_pos != this->state_.position;
-    }
-
-    bool Dog::IsAfk(double current_time, double dog_retirement_time, model::Pos new_pos) {
-        if (IsMoving(new_pos)) {
-            this->last_move_time_ = 0;
-
-            return false;
-        }
-
-        last_move_time_ += current_time;
-
-        return last_move_time_ > dog_retirement_time;
-    }
-
-    void GameSession::SavePlayerStatsToDB(std::shared_ptr<Dog> dog) {
-        try {
-            if (!conn_pool_) {
-                throw std::runtime_error("nullptr conn_pool_");
-            }
-            auto connection = conn_pool_->GetConnection();
-
-            pqxx::work work{*connection};
-            
-            work.exec_prepared("insert_retire",
-                dog->GetName(),
-                dog->GetState().score,
-                dog->CalcPlayTime()
-            );
-
-            work.commit();
-        } catch (const std::exception& e) {
-            throw std::runtime_error(e.what());
-        }
-    }
-
-    void GameSession::RetirePlayer(Dog::Id dog_id) {
-        auto& dog = dogs_.at(dog_id);
-
-        SavePlayerStatsToDB(dog);
-
-        dogs_.erase(dog_id);
-
-        dogs_vector_.erase(
-            std::remove_if(
-                dogs_vector_.begin(), dogs_vector_.end(),
-                [&dog_id](const auto& dog) { 
-                    return dog->GetId() == dog_id; }
-            ),
-            dogs_vector_.end()
-        );
-
-        // BOOST_LOG_TRIVIAL(info) << "SavePlayerStatsToDB completed successfully.";
-    }
-
-    // void GameSession::RemoveAFKPlayers(std::unordered_map<Dog::Id, Pos> new_positions, 
-    //                                    double delta_time) {
-    //     std::vector<Dog::Id> afk_players;
-
-    //     for (auto& [dog_id, dog] : dogs_) {
-    //         if (dog->IsAfk(delta_time, dog_retirement_time_, new_positions[dog_id])) {
-    //             afk_players.push_back(dog_id);
-    //         }
-    //     }
-
-    //     for (const auto& dog_id : afk_players) {
-    //         RetirePlayer(dog_id);
-    //     }
-    // }
         
     void GameSession::Tick(double delta_time) {
         using namespace collision_detector;
@@ -586,10 +510,7 @@ using namespace std::literals;
         std::unordered_map<Dog::Id, Pos> new_positions = 
             ComputeNewPositions(delta_time);
 
-        // 2. Удаляем афк игроков
-        // RemoveAFKPlayers(new_positions, delta_time);
-
-        // 3. Определяем события сбора предметов
+        // 2. Определяем события сбора предметов
         std::vector<GatheringEvent> events = 
             DetectGatheringEvents(delta_time);
 
@@ -760,50 +681,13 @@ using namespace std::literals;
         default_tick_time_ = delta_time;
     }
 
-    std::string Game::GetGameRecords() const {
-
-        try {
-        auto connection_wrap = 
-            session_service_->GetDBConnPool()->GetConnection();
-            
-            pqxx::work work{*connection_wrap};
-
-            pqxx::result result = work.exec(R"(
-                SELECT name, score, play_time_ms FROM retired_players 
-                ORDER BY score DESC, play_time_ms, name LIMIT 100;
-            )");
-
-            work.commit();
-
-            boost::json::array records_json;
-            for (const auto& row : result) {
-                boost::json::object record;
-                record["name"] = row["name"].c_str();
-                record["score"] = row["score"].as<int>();
-                record["playTime"] = row["play_time_ms"].as<int>();
-
-                records_json.push_back(record);
-            }
-
-            std::string response_json = 
-                boost::json::serialize(records_json);
-
-            return response_json;
-
-        } catch (const std::exception& e) {
-            throw std::runtime_error(e.what());
-        }
-    }
-
     void Game::LoadGameData(CommonData data, 
                             loot_gen::LootGeneratorConfig config) { 
         common_data_ = std::make_shared<CommonData>(std::move(data));
 
         map_service_ = MapService(common_data_);
 
-        auto pool = session_service_->GetDBConnPool();
         session_service_ = std::make_shared<SessionService>((common_data_));
-        session_service_->SetDBConnPool(pool);
         
         loot_service_ = std::make_shared<LootService>(common_data_);
         loot_service_->ConfigureLootGenerator(config.period, config.probability);

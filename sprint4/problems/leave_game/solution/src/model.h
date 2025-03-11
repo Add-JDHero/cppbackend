@@ -240,12 +240,6 @@ namespace model {
         const State&        GetState() const noexcept;
         const double        GetDefaultDogSpeed() const noexcept;
         const FoundObjects& GetBag() const noexcept;
-        
-        int CalcPlayTime() const {
-            std::chrono::time_point now = std::chrono::steady_clock::now();
-            return std::chrono::duration_cast<std::chrono::duration<int>>(
-                now - play_time_).count();
-        }
 
         void AddToBag(uint64_t loot_id, uint64_t loot_type);
         void AddScore(int score);
@@ -260,20 +254,9 @@ namespace model {
         void StopDog();
 
         Pos MoveDog(Pos new_position);
-        
-        bool IsAfk(double now, 
-                  double dog_retirement_time, 
-                  model::Pos new_pos);
 
     private:
         void SetBagCapacity(size_t capacity);
-
-        bool IsMoving(model::Pos new_pos) const;
-
-
-        double last_move_time_ = 0;
-        std::chrono::steady_clock::time_point play_time_ = 
-            std::chrono::steady_clock::now();
 
         State state_;
         double default_dog_speed_ = 0;
@@ -327,12 +310,8 @@ namespace model {
 
         void SetDeserializedSessionId(Id id) { id_ = id; }
         void SetDeserializedObjVal(uint64_t lost_obect_id) { lost_object_id_ = lost_obect_id; }
-        void SetDBConnPool(db::ConnectionPool* conn_pool) {
-            conn_pool_ = conn_pool;
-        }
 
         int GetLootValue(int loot_type) const;
-
 
         uint64_t GetLootCount();
 
@@ -359,15 +338,8 @@ namespace model {
         void Tick(double delta_time);
 
         void RemoveDog(Dog::Id id);
-
-        void RetirePlayer(Dog::Id dog_id);
-
-        void SavePlayerStatsToDB(std::shared_ptr<Dog> dog);
     
     private:
-
-        void RemoveAFKPlayer(std::unordered_map<Dog::Id, Pos> new_positions, 
-                              double delta_time);
 
         Pos CalculateNewPosition(const Pos& position, const Speed& speed, double delta_time);
 
@@ -418,10 +390,6 @@ namespace model {
         Id id_;
 
         size_t bag_capacity_;
-
-        db::ConnectionPool* conn_pool_ = nullptr;
-
-        double dog_retirement_time_ = 15;
 
         static inline Id general_id_{0};
         static inline uint64_t lost_object_id_{0};
@@ -494,22 +462,8 @@ namespace model {
 
         void Tick(std::chrono::milliseconds delta_time);
 
-        void SetDBConnPool(db::ConnectionPool* conn_pool) {
-            connection_pool_ = conn_pool;
-
-            for (const auto& session : common_data_->sessions_) {
-                session->SetDBConnPool(conn_pool);
-            }
-        }
-
-        db::ConnectionPool* GetDBConnPool() const { 
-            return connection_pool_; 
-        }
-
     private:
         void ConfigureSessionData(std::shared_ptr<GameSession> session);
-
-        db::ConnectionPool* connection_pool_ = nullptr;
 
         std::shared_ptr<CommonData> common_data_;
     };
@@ -579,9 +533,6 @@ namespace model {
 
         void SetDefaultTickTime(double delta_time);
         void SetDefaultDogSpeed(double default_speed);
-        void SetDBConnPool(db::ConnectionPool* pool) { 
-            session_service_->SetDBConnPool(pool);
-        }
     private:
 
         double dog_retirement_time = 15000;

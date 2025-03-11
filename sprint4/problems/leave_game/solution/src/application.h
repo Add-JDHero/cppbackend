@@ -159,9 +159,7 @@ namespace app {
         const std::string GetSerializedPlayersList(const Token& token) const;
         const std::string GetSerializedGameState(const Token& token) const;
 
-        std::string GetGameRecords() const {
-            return game_.GetGameRecords();
-        }
+        std::string GetGameRecords() const;
 
         model::MapService& GetGameMapService() {
             return game_.GetMapService();
@@ -217,7 +215,7 @@ namespace app {
                               std::vector<PlayerMovementInfo>& old,
                               std::vector<PlayerMovementInfo>& current);
 
-        void SavePlayerStatsToDB(std::shared_ptr<model::Dog> dog);
+        void SavePlayerStatsToDB(std::shared_ptr<player::Player> dog);
 
         std::vector<PlayerMovementInfo> PlayersInfoSnapstot() const;
 

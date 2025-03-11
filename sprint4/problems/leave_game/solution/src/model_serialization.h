@@ -432,8 +432,7 @@ namespace serialization {
             : serialized_data_(game.GetCommonData())
             , default_dog_speed_(game.GetDefaultDogSpeed())
             , default_tick_time_(game.GetDefaultTickTime())
-            , config(game.GetGeneratorConfig())
-            , conn_pool_(game.GetSessionService().GetDBConnPool()) {
+            , config(game.GetGeneratorConfig()) {
         }
 
         template <typename Archive>
@@ -449,8 +448,6 @@ namespace serialization {
             game.LoadGameData(std::move(serialized_data_.Restore()), config);
             game.SetDefaultDogSpeed(default_dog_speed_);
             game.SetDefaultTickTime(default_tick_time_);
-
-            game.SetDBConnPool(conn_pool_);
 
             return game;
         }

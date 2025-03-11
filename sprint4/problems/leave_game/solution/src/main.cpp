@@ -73,7 +73,6 @@ int main(int argc, const char* argv[]) {
         // 1. Загружаем карту из файла и строим модель игры
         model::Game game = json_loader::LoadGame(arg.config);
         game.SetDefaultTickTime(static_cast<double>(tick_time.count()));
-        game.SetDBConnPool(&conn_pool);
 
         app::Application app(game, conn_pool);
 
