@@ -27,6 +27,10 @@ namespace player {
             return dog_->GetName();
         }
 
+        void RemovePlayer() {
+            game_session_->RemoveDog(dog_->GetId());
+        }
+
         int GetDogScore() const { return dog_->GetState().score; }
 
         double GetLastMoveTime() const { return last_move_time_; }

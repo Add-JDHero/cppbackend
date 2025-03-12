@@ -196,11 +196,17 @@ namespace app {
 
     void Players::Remove(model::Dog::Id dog_id, model::Map::Id map_id) {
         auto it = players_.find({dog_id, *map_id});
-        auto token = FindTokenByPlayer(it->second);
-
-        player_tokens_.RemovePlayer(token);
         if (it != players_.end()) {
+            auto token = FindTokenByPlayer(it->second);
+
+            player_tokens_.RemovePlayer(token);
+            
+            auto player = it->second;
+            
+            player->RemovePlayer();
             players_.erase(it);
+        } else {
+            throw std::logic_error("there is no such player");
         }
     }
 

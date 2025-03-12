@@ -130,9 +130,9 @@ namespace app {
         }
 
     private:
-        using IdToName = std::pair<uint64_t, std::string>;
+        using IdToMapId = std::pair<uint64_t, std::string>;
         PlayerTokens player_tokens_;
-        std::unordered_map<IdToName, 
+        std::unordered_map<IdToMapId, 
                            std::shared_ptr<player::Player>, 
                            boost::hash<std::pair<uint64_t, std::string>>> players_;
 
