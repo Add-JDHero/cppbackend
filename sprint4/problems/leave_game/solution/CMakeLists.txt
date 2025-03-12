@@ -4,14 +4,10 @@ project(game_server CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CXX_STANDARD_REQUIRED ON)
 
-include(${CMAKE_BINARY_DIR}/conanbuildinfo_multi.cmake)
-conan_basic_setup(TARGETS)
+# include(${CMAKE_BINARY_DIR}/conanbuildinfo_multi.cmake)
+# conan_basic_setup(TARGETS)
 
-# Указываем путь к заголовкам
-# include_directories(/usr/include/pqxx)
-
-# # Ищем библиотеку
-# find_library(PQXX_LIB pqxx REQUIRED HINTS /usr/lib/aarch64-linux-gnu)
+find_package(Boost 1.78.0 REQUIRED system serialization log log_setup program_options)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PQXX REQUIRED libpqxx)
@@ -71,9 +67,12 @@ add_executable(game_server
   src/database_manager.cpp
 )
 
-target_link_libraries(game_server 
-  CONAN_PKG::boost
-  # ${PQXX_LIB}
+target_link_libraries(game_server
+  ${Boost_include_dir}
+  Boost::serialization
+  Boost::log
+  Boost::log_setup
+  Boost::program_options
   ${PQXX_LIBRARIES}
   ${PQ_LIB}
-) 
+)

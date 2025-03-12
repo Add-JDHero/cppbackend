@@ -6,3 +6,5 @@ cmake_multi
 
 [options]
 boost:header_only=True
+boost:without_log=False
+boost:without_serialization=False
