@@ -301,6 +301,31 @@ namespace http_handler {
         };
 
         BOOST_LOG_TRIVIAL(info) << logging::add_value(additional_data, jv) << "response sent";
+    
+        static int64_t total_us = 0;
+        static int count = 0;
+        static auto last_print = std::chrono::steady_clock::now();
+
+        total_us += resp_duration;
+        ++count;
+
+        auto now = std::chrono::steady_clock::now();
+        if (now - last_print >= std::chrono::seconds(10)) {
+            if (count > 0) {
+                double avg = static_cast<double>(total_us) / count;
+
+                std::ofstream out("response_avg.log", std::ios::app); // ⬅️ append mode
+                if (out.is_open()) {
+                    auto time_now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+                    out << std::put_time(std::localtime(&time_now), "[%F %T] ")
+                        << "avg /api/v1/game/state: " << avg << " us over " << count << " requests\n";
+                }
+
+                total_us = 0;
+                count = 0;
+                last_print = now;
+            }
+        }    
     }
 
     template <class SomeRequestHandler>
@@ -334,7 +359,7 @@ namespace http_handler {
                 try {
                     // Этот assert не выстрелит, так как лямбда-функция будет выполняться 
                     // внутри strand
-                    assert(self->api_strand_.running_in_this_thread());
+                    // assert(self->api_strand_.running_in_this_thread());
 
                     ResponseVariant result = self->api_handler_.RouteRequest(req);
                     std::visit([&send](auto&& res){
@@ -352,7 +377,15 @@ namespace http_handler {
                 }
             };
 
-            return net::dispatch(api_strand_, handle);            
+            if (req.method() == http::verb::get || req.method() == http::verb::head) {
+                // обработка без strand — параллельно
+                return handle();
+            } else {
+                // изменение состояния — через strand
+                return net::dispatch(api_strand_, handle);
+            }
+
+            // return net::dispatch(api_strand_, handle);         
         }
 
         std::visit([&send](auto&& result){

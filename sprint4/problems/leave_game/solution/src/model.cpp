@@ -388,7 +388,7 @@ using namespace std::literals;
             geom::Point2D end(start.x + dog->GetSpeed().x * delta_time, 
                             start.y + dog->GetSpeed().y * delta_time);
             
-            gatherers.push_back({start, end, 0.6});  // Ширина собаки = 0.6
+            gatherers.push_back({start, end, 0.3});  // Ширина собаки = 0.6
         }
         return gatherers;
     }

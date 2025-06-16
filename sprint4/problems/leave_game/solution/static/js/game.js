@@ -210,6 +210,15 @@ class GameState {
     }
   }
 
+  startKeepAlive() {
+    setInterval(() => {
+      // Если не нажимается ничего и ничего не отправлялось явно
+      if (!this.keyState.getLastKey()) {
+        this._pressKey("", function(){});
+      }
+    }, 50);  // каждые 50 мс
+  }
+
   _pressKey(keys, then) {
     const self = this;
     $.post({
@@ -232,6 +241,8 @@ class GameState {
     if (this.started || !this.stateLoaded || !this.playersLoaded) {
       return;
     }
+
+    this.startKeepAlive();
 
     this.started = true;
     this._applyDesiredState();

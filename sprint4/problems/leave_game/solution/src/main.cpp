@@ -108,7 +108,8 @@ int main(int argc, const char* argv[]) {
         const auto address = net::ip::make_address("0.0.0.0");
         constexpr net::ip::port_type port = 8080;
         http_server::ServeHttp(ioc, {address, port}, [&logging_handler](auto&& req, auto&& send) {
-            logging_handler(std::forward<decltype(req)>(req), std::forward<decltype(send)>(send));
+            logging_handler(std::forward<decltype(req)>(req), 
+                            std::forward<decltype(send)>(send));
         });
 
         // Cообщает тестам о том, что сервер запущен и готов обрабатывать запросы
@@ -117,9 +118,9 @@ int main(int argc, const char* argv[]) {
         auto ms = std::chrono::milliseconds(static_cast<int>(arg.period));
         auto ticker = 
             std::make_shared<game_time::Ticker>(strand, ms,
-            [&app](std::chrono::milliseconds delta) { 
-                app.Tick(delta); 
-            }
+                [&app](std::chrono::milliseconds delta) { 
+                    app.Tick(delta); 
+                }
         );
         ticker->Start();
 
